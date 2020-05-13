@@ -35,10 +35,8 @@ function handleDrop(e) {
 }
 
 function handleFiles(files) {
-    ([...files]).forEach(uploadFile)
+    console.log(files);
+    console.log(files[0].readAsText());
 }
 
-function uploadFile(file) {
-    console.log(file);
-}
 
