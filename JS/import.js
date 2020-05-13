@@ -7,7 +7,6 @@ let dropArea = document.getElementById('drop-area');
 function preventDefaults (e) {
     e.preventDefault();
     e.stopPropagation();
-    console.log('OK');
 }
 
 ['dragenter', 'dragover'].forEach(eventName => {
@@ -40,22 +39,6 @@ function handleFiles(files) {
 }
 
 function uploadFile(file) {
-    let url = 'python script ?';
-    let request = new XMLHttpRequest();
-    let formData = new FormData();
-    request.open('POST', url, true);
-
-    request.addEventListener('readystatechange', function(e) {
-        if (request.readyState === 4 && request.status === 200) {
-            alert('Votre fichier a bien été déposé !');
-        }
-        else if (request.readyState === 4 && request.status !== 200) {
-            alert('Votre fichier n\'a pas pu être déposé :(');
-        }
-    });
-    console.log(request.status);
-
-    formData.append('file', file);
-    request.send(formData)
+    console.log(file);
 }
 
