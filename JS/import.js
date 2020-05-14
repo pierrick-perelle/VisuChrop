@@ -45,6 +45,5 @@ function handleFiles(files) {
         document.getElementById("fileContents").innerHTML = "error reading file";
     }
 }
-console.log(test);
 
 
