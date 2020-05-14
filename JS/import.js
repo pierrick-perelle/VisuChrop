@@ -17,11 +17,11 @@ function preventDefaults (e) {
     dropArea.addEventListener(eventName, unhighlight, false)
 });
 
-function highlight(e) {
+function highlight() {
     dropArea.classList.add('highlight');
 }
 
-function unhighlight(e) {
+function unhighlight() {
     dropArea.classList.remove('highlight');
 }
 
@@ -35,8 +35,15 @@ function handleDrop(e) {
 }
 
 function handleFiles(files) {
-    console.log(files);
-    console.log(files[0].readAsText());
+    let reader = new FileReader();
+    let file = files[0];
+    reader.readAsText(file, "UTF-8");
+    reader.onload = function (evt) {
+        document.getElementById("fileContents").innerHTML = evt.target.result;
+    };
+    reader.onerror = function (evt) {
+        document.getElementById("fileContents").innerHTML = "error reading file";
+    }
 }
 
 

@@ -44,7 +44,7 @@ header{
     text-align: center;
     width:80%;
     height:60%;
-    border: 2px dashed black;
+    border: 4px dashed black;
     border-radius: 20px;
     font-family: sans-serif;
     margin-top:2%;
@@ -70,11 +70,12 @@ footer{
     height: auto;
     color:white;
     text-align: center;
+    margin:2px;
 }
 
 /* drop area style */
 #drop-area.highlight {
-    border-color: purple;
+    border-color: deepskyblue;
 }
 p {
     margin-top: 0;
