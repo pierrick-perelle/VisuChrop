@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
-    <link href="CSS/style.css" rel="stylesheet">
+    <title>VCP</title>
+    <link href="css/style.css" rel="stylesheet">
 </head>
 <body>
 <header>
@@ -13,16 +13,14 @@
 <div id="box1">
     <div id="drop-area">
         <form class="my-form">
-            <p>Télécharger votre fichier à l'aide du bouton ci-dessous ou en le déposant directement dans cette zone</p>
-            <input type="file" id="fileElem" accept=".csv, .tab" onchange="handleFiles(this.files)">
+            <p>Séléctionner votre fichier à l'aide du bouton ci-dessous ou en le déposant directement dans cette zone</p>
+            <input type="file" id="fileElem" accept=".csv, .tab">
             <label class="button" for="fileElem">Séléctionner un fichier</label>
         </form>
     </div>
 </div>
 <div id="box2">
-    <div id="fileContents">
-
-    </div>
+    <svg class="graph" id="visualisation"></svg>
 </div>
 <div id="box3">
 
@@ -34,6 +32,7 @@
 <footer>
     <div>Icons made by <a href="https://www.flaticon.com/authors/pixel-perfect" title="Pixel perfect">Pixel perfect</a> from <a href="https://www.flaticon.com/"     title="Flaticon">www.flaticon.com</a></div>
 </footer>
+<script src="https://d3js.org/d3.v5.js"></script>
+<script type="text/javascript" src="javascript/import.js"></script>
 </body>
-<script type="text/javascript" src="JS/import.js"></script>
 </html>

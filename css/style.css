@@ -1,5 +1,6 @@
 body{
     margin:0px;
+    overflow-x: hidden;
 }
 
 header{
@@ -57,6 +58,9 @@ header{
 }
 #box2{
     background-color: #a8dadc;
+    display:flex;
+    align-items: center;
+    justify-content: center;
 }
 #box3{
     background-color: #457b9d;
@@ -70,7 +74,6 @@ footer{
     height: auto;
     color:white;
     text-align: center;
-    margin:2px;
 }
 
 /* drop area style */
@@ -105,4 +108,27 @@ p {
 }
 #fileElem {
     display: none;
+}
+
+
+.axis path {
+    fill: none;
+    stroke: #777;
+    shape-rendering: crispEdges;
+}
+.axis text {
+    font-family: Lato;
+    font-size: 13px;
+}
+#visualisation{
+    width:90%;
+    height: 95%;
+    display:flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.legend {
+    font-size: 14px;
+    font-weight: bold;
 }
