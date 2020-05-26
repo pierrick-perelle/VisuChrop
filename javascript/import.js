@@ -151,7 +151,6 @@ function parsing(data){
     * dataGroup[Chromosome][origine].values[la ligne de données]
     * chaque ligne de données est sous la forme suivante :
     * chromosome(<- useless) - origine(A_m,A_z...) - valeur(0.50,0.20,...) - x(notre abscisse)
-    *
     * */
 
     graphSetup2(dataGroup);
@@ -278,19 +277,20 @@ function graphSetup2(data){
 
     window.accesData = data;
 
+    let chr = 0; //displayed chromosome
 
     let field = {
-        'V' : "Velut",
-        'T' : "Texti",
-        'S' : "Schiz",
-        'E' : "Enset",
-        'B' : "Balbi",
-        'A_z' : "Zebri",
-        'A_u' : "Sumsat",
-        'A_s' : "Bursa",
-        'A_m' : "Malac",
-        'A_j' : "PJB",
-        'A_b' : "Banks"
+        'V' : ["Velut","#730800"],
+        'T' : ["Texti","#ffff00"],
+        'S' : ["Schiz","#660099"],
+        'E' : ["Enset","#22780f"],
+        'B' : ["Balbi","#000000"],
+        'A_z' : ["Zebri","#ff0000"],
+        'A_u' : ["Sumsat","#1034a6"],
+        'A_s' : ["Bursa","#ef9b0f"],
+        'A_m' : ["Malac","#0000ff"],
+        'A_j' : ["PJB","#ff00ff"],
+        'A_b' : ["Banks","#00ff00"],
     };
 
     console.log(data);
@@ -305,17 +305,9 @@ function graphSetup2(data){
     let marginTop = parseInt(style.marginTop);
     let marginBottom = parseInt(style.marginBottom);
 
-    let vis = d3.select("#graph"),
-        MARGINS = {
-            top: marginTop,
-            right: marginRight,
-            bottom: marginBottom,
-            left: marginLeft
-        },
-        WIDTH = visu.clientWidth - MARGINS.left - MARGINS.right,
-        HEIGHT = visu.clientHeight - MARGINS.top - MARGINS.bottom;
+    let WIDTH = visu.clientWidth - marginLeft - marginRight;
+    let HEIGHT = visu.clientHeight - marginTop - marginBottom;
 
-    let lSpace = (HEIGHT/field.length)/2;
 
     let x = d3.scaleLinear()
         .range([0, WIDTH]);
@@ -329,71 +321,60 @@ function graphSetup2(data){
     let yAxis = d3.axisLeft()
         .scale(y);
 
-    let lineGen = d3.line()
+    let lineGen = d3.line() //line generator
         .x(function(d) {
             return x(d.x);
         })
         .y(function(d) {
             return y(d.valeur);
-        }).curve(d3.curveBasis);
+        });/*.curve(d3.curveBasis);*/
 
     let svg = d3.select("#graph").append("svg")
-        .attr("width", WIDTH + MARGINS.left + MARGINS.right)
-        .attr("height", HEIGHT + MARGINS.top + MARGINS.bottom)
+        .attr("width", WIDTH + marginLeft + marginRight)
+        .attr("height", HEIGHT + marginTop + marginBottom)
         .append("g")
-        .attr("transform", "translate(" + MARGINS.left + "," + MARGINS.top + ")");
+        .attr("transform", "translate(" + marginLeft + "," + marginTop + ")");
 
 
     x.domain(d3.extent(data[0][0].values, function(d) {
         return d.x;
     }));
 
-    /*let ymin = d3.min(data[0], function(c) {
-        return d3.min(c.values, function(v) {
-            return v.valeur;
-        });
-    });
+    y.domain([0,1.20]);
 
-    let ymax = d3.max(data[0], function(c) {
-        return d3.max(c.values, function(v) {
-            return v.valeur;
-        });
-    });*/
+    let floorValueArray = {}; //origin floor value
 
-
-    y.domain([0,1]);
-
-    let key = {}; //origin floor value
-
-    let selector = d3.select("#legend");
-
-    let legend = selector.selectAll('g')
+    let legend = d3.select("#legend").selectAll('g')
         .data(data[0])
         .enter()
         .append('g')
-        .attr('class', 'legend');
+        .attr('class', 'legend')
+        .style("margin-bottom",""+((HEIGHT/field.length)/2)+"px");
 
     legend.append('div')
         .attr("class","color")
-        .style("width","10")
-        .style("height","10");
+        .style("background-color",function(d){
+            return field[d.key][1];
+        });
 
     legend.append('text')
         .text(function(d) {
-            key[d.key] = 0;
-            return field[d.key];
+            floorValueArray[d.key] = 0;
+            return field[d.key][0];
         });
 
+    legend.append('input')
+        .attr("class","floor")
+        .attr("type","number")
+        .attr("step","0.001")
+        .attr("max","1.20")
+        .attr("min","0")
+        .attr("value","0")
+        .attr("id", function(d){
+            return d.key;
+        });
 
-
-    /*let inputColumn = d3.select("#input");
-
-    let input = inputColumn.selectAll("input")
-        .data(data[0])
-        .enter()
-        .append('input');*/
-
-    /*create input*/
+    document.getElementsByClassName("legend")[0].classList.add("clicked"); //ajout de la class clickec au premier node de la classe legend.
 
     svg.append("g")
         .attr("class", "x axis")
@@ -410,47 +391,40 @@ function graphSetup2(data){
         .attr("transform", "rotate(-90)")
         .attr("y", 6)
         .attr("dy", ".71em")
-        .style("text-anchor", "end")
-        .text("Valeur d'origine");
+        .style("text-anchor", "end");
 
-    let origine = svg.selectAll(".origine")
-        .data(data[0])
-        .enter().append("g")
-        .attr("class", "origine");
+    let chromosome = svg.selectAll(".chromosome")
+        .data(data[0]) // nombre de <g id="chrx"> </g> qui vont être crée (1 par chromosome).
+        .enter()
+        .append("g")
+        .attr("id", function(d,i){
+            return "chr" + i;
+        })
+        .attr("class","chromosome");
 
-    data[0].forEach(function(d, i) {
-        origine.append('path')
-            .attr("class", "line")
-            .attr('d', lineGen(d.values))
-            .style('stroke', function(d, j) {
-                return "hsl(" + Math.random() * 360 + ",100%,50%)";
-            })
-            .attr('stroke-width', 2)
-            .attr('fill', 'none');
-    });
+    fillgraph(chr,data,lineGen,svg,field);
 
     let mouseG = svg.append("g")
         .attr("class", "mouse-over-effects");
 
-    mouseG.append("path") // this is the black vertical line to follow mouse
+    mouseG.append("path") // ligne vertical noir.
         .attr("class", "mouse-line")
         .style("stroke", "black")
         .style("stroke-width", "1px")
         .style("opacity", "0")
         .style("transform", "rotate(90deg) translate(0,-"+ WIDTH + "px)");
 
-    let text = mouseG.append("text")
+    mouseG.append("text")
         .attr("class","y-value");
 
-    let lines = document.getElementsByClassName('line');
-
     let mousePerLine = mouseG.selectAll('.mouse-per-line')
-        .data(origine)
+        .data(chromosome)
         .enter()
         .append("g")
         .attr("class", "mouse-per-line");
 
     let yHeight = document.getElementById("y axis").firstChild.getBoundingClientRect().height; //retrouver la taille en px du df de y
+    console.log(yHeight);
 
     mousePerLine.append("text")
         .attr("transform", "translate(10,3)");
@@ -459,7 +433,7 @@ function graphSetup2(data){
 
     mouseG.append('svg:rect') // append a rect to catch mouse movements on canvas
         .attr('width', WIDTH) // can't catch mouse events on a g element
-        .attr('height', yHeight)
+        .attr('height', yHeight-4)
         .attr('fill', 'none')
         .attr('pointer-events', 'all')
         .on('mouseout', function() { // on mouse out hide line, circles and text
@@ -490,17 +464,18 @@ function graphSetup2(data){
                 .attr("transform",function() {
                     let d = "translate(" + 10 + "," + (mouse[1] - 10)  + ")";
                     return d;
-                });
-
-            text.text(((mouse[1] - (yHeight-2.5))/(yHeight-2.5)).toFixed(3) * -1 + ""); //afficher au dessus de la ligne du tooltip la valeur de y
+                })
+                .text(((mouse[1] - (yHeight-4))/((yHeight-4)/1.20)).toFixed(3)*-1); //afficher au dessus de la ligne du tooltip la valeur de y
         })
         .on("click", function () {
             let mouse = d3.mouse(this);
-            key[getKeyByValue(field,originSelector)] = ((mouse[1] - yHeight) / yHeight).toFixed(3) * -1;
-            console.log(key);
+            floorValueArray[getKeyByValue(field,originSelector)] = (((mouse[1] - yHeight)/(yHeight/1.20)).toFixed(3)*-1); //on cherche la valeur origineSelector dans field (Velut => V) et ensuite on cherche cette valeur dans notre floorValueArray puis on ajoute la valeur.
+            console.log(floorValueArray);
+            refreshFloor(floorValueArray);
         });
 
 }
+
 function inputSetup(){
     let legend = document.getElementById("legend");
     for (let i = 0; i < legend.children.length; i++) {
@@ -521,5 +496,45 @@ function inputSetup(){
 }
 
 function getKeyByValue(object, value) {
-    return Object.keys(object).find(key => object[key] === value);
+    return Object.keys(object).find(key => object[key][0] === value); //object[key][0] car field est sous la forme key => ["nom","color"] ici c'est le nom que nous voulons.
 }
+
+function fillgraph(idChromosome,data,lineGen,svg,field){
+
+    for(let chromosome of document.getElementsByClassName("chromosome") ){
+        if(chromosome.id !== "chr" + idChromosome) {
+            chromosome.style.display = "none";
+        }else{
+            chromosome.style.display = "block";
+        }
+    }
+
+    let currentChromosome = svg.select("#chr" + idChromosome);
+
+    data[idChromosome].forEach(function(d, i) {
+        currentChromosome.append('path')
+            .attr("class", "line")
+            .attr('d', lineGen(d.values))
+            .style('stroke', function() {
+                return field[d.key][1];
+            })
+            .attr('stroke-width', 2)
+            .attr('fill', 'none');
+    });
+}
+
+function refreshFloor(floorValueArray){
+   let id;
+
+    Object.keys(floorValueArray).forEach(function(key) {
+        id = document.getElementById(key);
+        id.value = floorValueArray[key];
+    });
+
+}
+
+function setupLegendColor(){
+
+}
+
+

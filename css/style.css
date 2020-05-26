@@ -183,23 +183,23 @@ p {
     stroke-width: 1.5px;
 }*/
 
-#floorSelector{
+#floorContainer{
     width: 100%;
     height: 100%;
     display:flex;
     flex-direction: row;
     align-items: center;
     vertical-align: center;
-    margin: 3% 0% 3% 3%;
-
 }
 
 #legend {
-    width: 100%;
     display:flex;
     flex-direction: column;
     align-items: center;
-    vertical-align: center;
+    vertical-align: middle;
+    width:100%;
+    height:100%;
+    justify-content: space-evenly;
 }
 
 #input{
@@ -213,9 +213,8 @@ p {
 
 
 .legend {
-    width: 5.5vw;
+    width: 80%;
     height:1vh;
-    margin-bottom: 15%;
     color:black;
     display: flex;
     flex-direction:row;
@@ -226,16 +225,21 @@ p {
     border: 1px solid #ccc;
     align-items: center;
     text-align: center;
+    justify-content: space-evenly;
+
 }
 .clicked{
     color:white;
 }
 
 .color{
-    width: 10px;
+    width: 25px;
     height: 10px;
     background-color: black;
     margin-right:1vw;
+}
+.floor{
+    width:25%;
 }
 
 
