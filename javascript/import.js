@@ -351,6 +351,16 @@ function graphSetup2(data){
         .attr('class', 'legend')
         .style("margin-bottom",""+((HEIGHT/field.length)/2)+"px");
 
+    legend.append('input')
+        .attr("class","displayedCurve")
+        .attr("type","checkbox")
+        .attr("checked","")
+        .attr("name",function(d){
+            return d.key;
+        });
+
+    curveOpacitySetup();
+
     legend.append('div')
         .attr("class","color")
         .style("background-color",function(d){
@@ -511,9 +521,12 @@ function fillgraph(idChromosome,data,lineGen,svg,field){
 
     let currentChromosome = svg.select("#chr" + idChromosome);
 
-    data[idChromosome].forEach(function(d, i) {
+    data[idChromosome].forEach(function(d) {
         currentChromosome.append('path')
             .attr("class", "line")
+            .attr("ancestor",function(){
+                return d.key;
+            })
             .attr('d', lineGen(d.values))
             .style('stroke', function() {
                 return field[d.key][1];
@@ -533,7 +546,37 @@ function refreshFloor(floorValueArray){
 
 }
 
-function setupLegendColor(){
+function curveOpacitySetup(){
+    let displayedCurveClass = document.getElementsByClassName("displayedCurve");
+    for (let checkbox of displayedCurveClass){
+        checkbox.addEventListener("click",function(){
+            refreshCurveOpacity();
+        });
+    }
+}
+
+function refreshCurveOpacity(){
+
+    let displayedCurveClass = document.getElementsByClassName("displayedCurve");
+    let curves = document.getElementsByClassName("line");
+
+
+    for(let checkbox of displayedCurveClass){
+        if(checkbox.checked){
+            for (let curve of curves ) {
+                if(checkbox.name === curve.attributes.ancestor.value){
+                    curve.style.opacity = 1;
+                }
+            }
+        }else{
+            for (let curve of curves ) {
+                if(checkbox.name === curve.attributes.ancestor.value){
+                    curve.style.opacity = 0;
+                }
+            }
+        }
+    }
+
 
 }
 
