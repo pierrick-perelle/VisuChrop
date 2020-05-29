@@ -85,7 +85,7 @@ function parsing(data){
         data.splice(i, 0, fillingData);
 
         while(i < data.length && chr === data[i]["chr"] ){
-            console.log("ça : " + parseInt(data[i]["start"]) + " plus ça : " + parseInt(data[i]["end"]) + " divisé par ça : " + "2" + " donne (pas un NaN on l'espère) : " + ((parseInt(data[i]["start"]) + parseInt(data[i]["end"])) / 2).toFixed(0) + "");
+            console.log(parseInt(data[i]["start"]) + " + " + parseInt(data[i]["end"]) + "/ 2 " + " = " + ((parseInt(data[i]["start"]) + parseInt(data[i]["end"])) / 2).toFixed(0) + "");
             data[i]["avr"] = ((parseInt(data[i]["start"]) + parseInt(data[i]["end"])) / 2).toFixed(0) + "";
             i++;
         }
