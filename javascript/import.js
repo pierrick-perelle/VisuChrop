@@ -70,6 +70,8 @@ function resetgraph(){
 
 function parsing(data){
 
+    console.log(data);
+
     /* Ajout d'un x qui servira d'abscisse sur chaque lignes de données */
 
 
@@ -85,7 +87,7 @@ function parsing(data){
         data.splice(i, 0, fillingData);
 
         while(i < data.length && chr === data[i]["chr"] ){
-            console.log(parseInt(data[i]["start"]) + " + " + parseInt(data[i]["end"]) + "/ 2 " + " = " + ((parseInt(data[i]["start"]) + parseInt(data[i]["end"])) / 2).toFixed(0) + "");
+           //console.log(parseInt(data[i]["start"]) + " + " + parseInt(data[i]["end"]) + "/ 2 " + " = " + ((parseInt(data[i]["start"]) + parseInt(data[i]["end"])) / 2).toFixed(0) + "");
             data[i]["avr"] = ((parseInt(data[i]["start"]) + parseInt(data[i]["end"])) / 2).toFixed(0) + "";
             i++;
         }
