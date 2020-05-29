@@ -56,7 +56,7 @@ function handleFiles(files) {
 }
 
 function resetgraph(){
-    document.getElementById("visualisation").innerHTML = '';
+    document.getElementById("graph").innerHTML = '';
 }
 
 /* PARSING DATA */
@@ -72,19 +72,24 @@ function parsing(data){
 
     /* Ajout d'un x qui servira d'abscisse sur chaque lignes de données */
 
+
     let i = 0;
     while(i < data.length){
 
-        let x = 0;
-
         let chr = data[i]["chr"];
 
+        let fillingData = JSON.parse(JSON.stringify(data[i])); //deep copy
+
+        fillingData["start"] = 0 + "";
+        fillingData["end"] = parseInt(data[i]["start"] - 1) + "";
+        data.splice(i, 0, fillingData);
+
         while(i < data.length && chr === data[i]["chr"] ){
-            data[i]["x"] = x;
+            data[i]["avr"] = ((parseInt(data[i]["start"]) + parseInt(data[i]["end"])) / 2).toFixed(0) + "";
             i++;
-            x++;
         }
     }
+
 
     /*
     mappage (si ça se dit?) des données pour faire en sorte que les origines(A_m..) ne soient plus des colonnes mais des champs dans les lignes de données
@@ -97,7 +102,7 @@ function parsing(data){
         return {
             id: id,
             values: data.map(function (d) {
-                return {chr: d.chr, valeur: d[id],x: d.x};
+                return {chr: d.chr, valeur: d[id],avr: d.avr};
             })
         };
     });
@@ -309,38 +314,124 @@ function graphSetup2(data){
     let HEIGHT = visu.clientHeight - marginTop - marginBottom;
 
 
-    let x = d3.scaleLinear()
-        .range([0, WIDTH]);
+    //mise en place des axes.
+
+    /*let x = d3.scaleLinear()
+        .range([0, WIDTH])
+        .domain([572,37801687]);*/
+
 
     let y = d3.scaleLinear()
-        .range([HEIGHT, 0]);
+        .range([HEIGHT, 0])
+        .domain([0,1.20]);
 
-    let xAxis = d3.axisBottom()
-        .scale(x);
+    /*let xAxis = d3.axisBottom()
+        .scale(x);*/
 
     let yAxis = d3.axisLeft()
         .scale(y);
 
-    let lineGen = d3.line() //line generator
-        .x(function(d) {
-            return x(d.x);
-        })
-        .y(function(d) {
-            return y(d.valeur);
-        });/*.curve(d3.curveBasis);*/
+    //mise en place du zoom.
+
+
+    //création de notre svg qui sera notre container pour notre graphique
 
     let svg = d3.select("#graph").append("svg")
-        .attr("width", WIDTH + marginLeft + marginRight)
+        .attr("width", (WIDTH + marginLeft) + marginRight)
         .attr("height", HEIGHT + marginTop + marginBottom)
         .append("g")
         .attr("transform", "translate(" + marginLeft + "," + marginTop + ")");
 
 
-    x.domain(d3.extent(data[0][0].values, function(d) {
-        return d.x;
-    }));
+    svg.append("defs").append("svg:clipPath")
+        .attr("id", "clip")
+        .append("svg:rect")
+        .attr("width", WIDTH )
+        .attr("height", HEIGHT )
+        .attr("x", 0)
+        .attr("y", 0);
 
-    y.domain([0,1.20]);
+    let graphlimit = svg.append('g')
+        .attr("id","graphlimit")
+        .attr("clip-path", "url(#clip)");
+
+
+
+
+    ////////////////////////
+
+    let x = d3.scaleLinear()
+        .domain([572,37801687])
+        .range([0, WIDTH]);
+
+    let x2 = x.copy(); // reference.
+
+    let zoom = d3.zoom()
+        .scaleExtent([1, 10])
+        .on("zoom", zoomed);
+
+    d3.select("svg")
+        .call(zoom);
+
+    let axis = d3.axisBottom().scale(x);
+
+    let axisG = svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + HEIGHT + ")")
+        .call(axis)
+        .attr("y", 6)
+        .attr("dy", ".71em");
+
+    function zoomed() {
+        console.log("ZOOMED");
+        x = d3.event.transform.rescaleX(x2);
+        axis.scale(x);
+        axisG.call(d3.axisBottom(x));
+        fillgraph(chr,data,lineGen,svg,field,graphlimit);
+    }
+
+
+
+
+    //////////////////////////
+
+
+
+
+
+
+
+    /*svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + HEIGHT + ")")
+        .call(xAxis)
+        .attr("y", 6)
+        .attr("dy", ".71em");*/
+
+    svg.append("g")
+        .attr("class", "y axis")
+        .attr("id", "y axis")
+        .call(yAxis)
+        .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", ".71em")
+        .text("text-anchor","end");
+
+
+
+
+
+
+    let lineGen = d3.line() //line generator
+        .x(function(d) {
+            return x(d.avr);
+        })
+        .y(function(d) {
+            return y(d.valeur);
+        });/*.curve(d3.curveBasis);*/
+
+
 
     let floorValueArray = {}; //origin floor value
 
@@ -384,26 +475,10 @@ function graphSetup2(data){
             return d.key;
         });
 
-    document.getElementsByClassName("legend")[0].classList.add("clicked"); //ajout de la class clickec au premier node de la classe legend.
+    document.getElementsByClassName("legend")[0].classList.add("clicked"); //ajout de la class clicked au premier node de la classe legend.
 
-    svg.append("g")
-        .attr("class", "x axis")
-        .attr("transform", "translate(0," + HEIGHT + ")")
-        .call(xAxis)
-        .attr("y", 6)
-        .attr("dy", ".71em");
 
-    svg.append("g")
-        .attr("class", "y axis")
-        .attr("id", "y axis")
-        .call(yAxis)
-        .append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("y", 6)
-        .attr("dy", ".71em")
-        .style("text-anchor", "end");
-
-    let chromosome = svg.selectAll(".chromosome")
+    let chromosome = svg.select("#graphlimit").selectAll(".chromosome")
         .data(data[0]) // nombre de <g id="chrx"> </g> qui vont être crée (1 par chromosome).
         .enter()
         .append("g")
@@ -509,7 +584,9 @@ function getKeyByValue(object, value) {
     return Object.keys(object).find(key => object[key][0] === value); //object[key][0] car field est sous la forme key => ["nom","color"] ici c'est le nom que nous voulons.
 }
 
-function fillgraph(idChromosome,data,lineGen,svg,field){
+function fillgraph(idChromosome,data,lineGen,svg,field,graphlimit){
+
+    d3.selectAll(".line").remove();
 
     for(let chromosome of document.getElementsByClassName("chromosome") ){
         if(chromosome.id !== "chr" + idChromosome) {
