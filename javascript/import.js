@@ -70,7 +70,6 @@ function resetgraph(){
 
 function parsing(data){
 
-    console.log(data);
 
     /* Ajout d'un x qui servira d'abscisse sur chaque lignes de données */
 
@@ -87,7 +86,6 @@ function parsing(data){
         data.splice(i, 0, fillingData);
 
         while(i < data.length && chr === data[i]["chr"] ){
-           //console.log(parseInt(data[i]["start"]) + " + " + parseInt(data[i]["end"]) + "/ 2 " + " = " + ((parseInt(data[i]["start"]) + parseInt(data[i]["end"])) / 2).toFixed(0) + "");
             data[i]["avr"] = ((parseInt(data[i]["start"]) + parseInt(data[i]["end"])) / 2).toFixed(0) + "";
             i++;
         }
@@ -285,7 +283,7 @@ function graphSetup2(data){
 
     window.accesData = data;
 
-    let chr = 0; //displayed chromosome
+    let chr = 1; //displayed chromosome
 
     let field = {
         'V' : ["Velut","#730800"],
@@ -346,6 +344,8 @@ function graphSetup2(data){
         .attr("transform", "translate(" + marginLeft + "," + marginTop + ")");
 
 
+    //création d'un clip path, tout tracée hors de cet élement ne sera pas affiché (résout le pb des courbes dépassant les axes)
+
     svg.append("defs").append("svg:clipPath")
         .attr("id", "clip")
         .append("svg:rect")
@@ -386,11 +386,10 @@ function graphSetup2(data){
         .attr("dy", ".71em");
 
     function zoomed() {
-        console.log("ZOOMED");
         x = d3.event.transform.rescaleX(x2);
         axis.scale(x);
         axisG.call(d3.axisBottom(x));
-        fillgraph(chr,data,lineGen,svg,field,graphlimit);
+        fillgraph(chr,data,lineGen,svg,field,graphlimit,field);
     }
 
 
@@ -481,12 +480,12 @@ function graphSetup2(data){
     document.getElementsByClassName("legend")[0].classList.add("clicked"); //ajout de la class clicked au premier node de la classe legend.
 
 
-    let chromosome = svg.select("#graphlimit").selectAll(".chromosome")
-        .data(data[0]) // nombre de <g id="chrx"> </g> qui vont être crée (1 par chromosome).
+    svg.select("#graphlimit").selectAll(".chromosome")
+        .data(data) // nombre de <g id="chrx"> </g> qui vont être crée (1 par chromosome) utile pour le selecteur.
         .enter()
         .append("g")
         .attr("id", function(d,i){
-            return "chr" + i;
+            return "chr" + i; //chr de 1 à 11
         })
         .attr("class","chromosome");
 
@@ -500,42 +499,43 @@ function graphSetup2(data){
         .style("stroke", "black")
         .style("stroke-width", "1px")
         .style("opacity", "0")
+        //.style("stroke-dasharray","4")
         .style("transform", "rotate(90deg) translate(0,-"+ WIDTH + "px)");
+
+
+    /*let dashedLine  = document.createElement("path");
+    dashedLine.id = "V";
+    d3.select("#V") // ligne vertical noir.
+        .attr("class", "mouse-line")
+        .style("stroke", "black")
+        .style("stroke-width", "1px")
+        .style("opacity", "0")
+        .style("transform", "rotate(90deg) translate(0,-"+ WIDTH + "px)");*/
 
     mouseG.append("text")
         .attr("class","y-value");
 
-    let mousePerLine = mouseG.selectAll('.mouse-per-line')
-        .data(chromosome)
-        .enter()
-        .append("g")
-        .attr("class", "mouse-per-line");
 
     let yHeight = document.getElementById("y axis").firstChild.getBoundingClientRect().height; //retrouver la taille en px du df de y
-    console.log(yHeight);
+    let origine = getKeyByValue(field,originSelector); // Velut -> V ...
+    inputSetup(); //place les inputs pour les seuils
+    let fixedFloorArray = fixedFloorArraySetup(); // crée le tableau qui contiendra les seuils fixe (ligne en pointillé)
+    fixedFloorSetup(fixedFloorArray,mouseG,WIDTH,field); // crée les lignes en pointillé (ainsi que le conteneur) selon le tableau crée au dessus.
 
-    mousePerLine.append("text")
-        .attr("transform", "translate(10,3)");
-
-    inputSetup();
 
     mouseG.append('svg:rect') // append a rect to catch mouse movements on canvas
         .attr('width', WIDTH) // can't catch mouse events on a g element
         .attr('height', yHeight-4)
         .attr('fill', 'none')
         .attr('pointer-events', 'all')
-        .on('mouseout', function() { // on mouse out hide line, circles and text
+        .on('mouseout', function() { // on mouse out hide line
             d3.select(".mouse-line")
-                .style("opacity", "0");
-            d3.selectAll(".mouse-per-line text")
                 .style("opacity", "0");
             d3.select(".y-value")
                 .style("opacity", "0");
         })
-        .on('mouseover', function() { // on mouse in show line, circles and text
+        .on('mouseover', function() { // on mouse in show line
             d3.select(".mouse-line")
-                .style("opacity", "1");
-            d3.selectAll(".mouse-per-line text")
                 .style("opacity", "1");
             d3.select(".y-value")
                 .style("opacity", "1");
@@ -550,19 +550,33 @@ function graphSetup2(data){
                 });
             d3.select(".y-value")
                 .attr("transform",function() {
-                    let d = "translate(" + 10 + "," + (mouse[1] - 10)  + ")";
-                    return d;
+                    return "translate(" + 10 + "," + (mouse[1] - 10) + ")";
                 })
-                .text(((mouse[1] - (yHeight-4))/((yHeight-4)/1.20)).toFixed(3)*-1); //afficher au dessus de la ligne du tooltip la valeur de y
+                .text((1.20 * (1-(mouse[1]/(yHeight-4)))).toFixed(3)); //afficher au dessus de la ligne du tooltip la valeur de y
         })
         .on("click", function () {
             let mouse = d3.mouse(this);
-            floorValueArray[getKeyByValue(field,originSelector)] = (((mouse[1] - yHeight)/(yHeight/1.20)).toFixed(3)*-1); //on cherche la valeur origineSelector dans field (Velut => V) et ensuite on cherche cette valeur dans notre floorValueArray puis on ajoute la valeur.
+            origine = getKeyByValue(field,originSelector);
+            //1.20 * [1 - (x/(y-4))]
+            floorValueArray[origine] = (1.20 * (1-(mouse[1]/(yHeight-4)))).toFixed(3); //Ajout de la valeur du seuil à notre FloorValueArray à l'index correspondant à l'origine actuellement séléctioné (originSelector)
             console.log(floorValueArray);
             refreshFloor(floorValueArray);
+
+
+            //display fixed Floor (dashed line) :
+
+            fixedFloorArray["chr"+chr][origine] = document.getElementsByClassName("mouse-line")[0].attributes.d.value; //update fixedFloorArray with the value clicked
+
+            refreshFixedFloor(fixedFloorArray,chr,field); //As soon as our array is up to date we call this to refresh our dashed lines, this function will set opacity to 1 for a dashed line if a value in our current chromosome is != 0.
+
         });
 
+
+
+
 }
+
+
 
 function inputSetup(){
     let legend = document.getElementById("legend");
@@ -587,7 +601,7 @@ function getKeyByValue(object, value) {
     return Object.keys(object).find(key => object[key][0] === value); //object[key][0] car field est sous la forme key => ["nom","color"] ici c'est le nom que nous voulons.
 }
 
-function fillgraph(idChromosome,data,lineGen,svg,field,graphlimit){
+function fillgraph(idChromosome,data,lineGen,svg,field){
 
     d3.selectAll(".line").remove();
 
@@ -617,14 +631,18 @@ function fillgraph(idChromosome,data,lineGen,svg,field,graphlimit){
 }
 
 function refreshFloor(floorValueArray){
-   let id;
+    let input;
 
     Object.keys(floorValueArray).forEach(function(key) {
-        id = document.getElementById(key);
-        id.value = floorValueArray[key];
+        input = document.getElementById(key);
+        input.value = floorValueArray[key];
     });
 
+    //fixedFloorArray["chr"+chr] = floorValueArray;
+
+
 }
+
 
 function curveOpacitySetup(){
     let displayedCurveClass = document.getElementsByClassName("displayedCurve");
@@ -657,6 +675,77 @@ function refreshCurveOpacity(){
         }
     }
 
+
+}
+
+function fixedFloorArraySetup() {
+    let lines = document.getElementsByClassName("line");
+    console.log(lines);
+    let chromosomes = document.getElementsByClassName("chromosome");
+    console.log(chromosomes);
+
+    let i = 0;
+
+    let fixedFloorArray = {};
+
+    for (let chromosome of chromosomes) {
+
+        fixedFloorArray[chromosome.id] = {};
+
+        for (let line of lines) {
+            fixedFloorArray[chromosome.id][line.attributes.ancestor.value] = 0;
+        }
+        i++;
+    }
+    console.log(fixedFloorArray);
+    return fixedFloorArray;
+
+}
+
+function fixedFloorSetup(fixedFloorArray, mouseG, WIDTH,field){
+    Object.keys(fixedFloorArray).forEach(function(chromosomeKey) {
+
+        let chrGroup = mouseG.append("g")
+            .attr("id","FF" + chromosomeKey); //FixedFloor
+
+        Object.keys(fixedFloorArray[chromosomeKey]).forEach(function(origineKey) {
+
+
+            chrGroup.append("path") // ligne vertical noir.
+                .attr("id","fixedFloor_" + chromosomeKey +"_"+ origineKey)
+                .attr("d", 0)
+                .style("stroke", field[origineKey][1])
+                .style("stroke-width", "1px")
+                .style("opacity", "0")
+                .style("stroke-dasharray", "4")
+                .style("transform", "rotate(90deg) translate(0,-" + WIDTH + "px)");
+
+
+        });
+    });
+
+}
+
+function refreshFixedFloor(fixedFloorArray,chr){
+
+    console.log(fixedFloorArray);
+    Object.keys(fixedFloorArray).forEach(function(chromosomeKey) {
+
+        if(chromosomeKey === "chr" + chr){
+
+            Object.keys(fixedFloorArray[chromosomeKey]).forEach(function(origineKey) {
+
+                if(fixedFloorArray[chromosomeKey][origineKey] !== 0){
+
+                    d3.select("#fixedFloor_" + chromosomeKey +"_"+ origineKey)
+                        .attr("d", fixedFloorArray[chromosomeKey][origineKey])
+                        .style("opacity",1);
+                }
+
+            });
+        }
+
+    });
 
 }
 
