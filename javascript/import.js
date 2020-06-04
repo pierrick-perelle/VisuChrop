@@ -1,7 +1,8 @@
 
 let dropArea = document.getElementById('drop-area');
 let fileInput = document.getElementById('fileElem');
-let originSelector = "Velut";
+let selectedOrigin = "Velut"; // origin selected for floor
+let selectedChromosome = 0; // displayed chromosome
 
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
     dropArea.addEventListener(eventName, preventDefaults, false)
@@ -64,14 +65,17 @@ function resetgraph(){
 /**
  * cette fonction sert à travailler les données,
  * il est préférable de les avoir sous la forme d'un tableau dont chaque case correspond à un graphique.
- * les données sont trié par chromosome
+ * maquette : data[graphique(ch0,chr1,...)][courbe(Velut,Schiz,...)]
+ * les données sont trié par chromosome puis par origine
  * @param data un tableau contenant nos données.
  */
 
 function parsing(data){
 
 
-    /* Ajout d'un x qui servira d'abscisse sur chaque lignes de données */
+    /* Ajout d'une ligne de données factice qui va de la position 0 à la position de début('start') de la première vrai ligne de données (pour chaque chromosome)
+    * On ajoute également un champ average("avr") qui fait la moyenne entre le début("start") et la fin("end") dans chaque ligne de données.
+    * */
 
 
     let i = 0;
@@ -94,10 +98,10 @@ function parsing(data){
 
     /*
     mappage (si ça se dit?) des données pour faire en sorte que les origines(A_m..) ne soient plus des colonnes mais des champs dans les lignes de données
-    * et qu'une valeur leur soit associée
-    *(on en profite pour enlever les colonnes start et end qui ne nous servent pas pour la suite. (on peut facilement les remettre si besoins
-    * pour les mosaïques)
-    * */
+    et qu'une valeur leur soit associée
+    on en profite pour enlever les colonnes start et end qui ne nous servent pas pour la suite. (on peut facilement les remettre si besoins
+    pour les mosaïques)
+    */
 
     let dataByOrigin = data.columns.slice(3).map(function (id) {
         return {
@@ -112,9 +116,9 @@ function parsing(data){
     let parsedData = [];
 
     /*
-    * ajout des origines (A_m, A_z..)(initialement id du tableau) dans les lignes de données
-    * Le tout est mis à la suite dans un nouveau tableau (parsedData)
-    * */
+    ajout des origines (A_m, A_z..)(initialement id du tableau) dans les lignes de données
+    Le tout est mis à la suite dans un nouveau tableau (parsedData)
+    */
 
     for(let ancestors of dataByOrigin){
         for(let line of ancestors.values){
@@ -123,43 +127,22 @@ function parsing(data){
         }
     }
 
-    /* Ce qui nous permet d'utiliser la fonction D3.nest pour grouper nos données par chromosome */
+    /* Ce qui nous permet d'utiliser la fonction D3.nest pour grouper nos données sur deux niveaux, d'abord par chromosome(chr1...) puis par origine(V...).*/
 
     let groupedData = d3.nest()
         .key(function(d) { return d.chr; })
+        .key(function(d) { return d.origine; })
         .entries(parsedData);
 
 
-
-
-    /* le tableau groupedData est sous la forme suivante :
-        GroupedData[Chromosome].values[ligne de données]
-        chaque ligne de données est sous la forme suivante :
-        chromosome(<- useless) - origine(A_m,A_z...) - valeur(0.50,0.20,...) - x(notre abscisse)
+    /*
+     * le tableau groupedData est sous la forme suivante :
+     * GroupedData[Chromosome].values[origine].values[ligne de données]
+     * chaque ligne de données est sous la forme suivante :
+     * chromosome(chr1,chr2...) - origine(A_m,A_z...) - valeur(0.50,0.20,...) - avr(9000,3000000,...)
      */
 
-    //console.log(groupedData);
-
-    /* On réutilise la fonction d3.nest pour trier par origine (A_m,..) chaque sous tableau (GroupedData[Chromosome])*/
-
-    let dataGroup = [];
-
-    for (let j = 0; j < groupedData.length-1; j++) {
-        dataGroup.push(d3.nest()
-            .key(function(d) {
-                return d.origine;
-            })
-            .entries(groupedData[j].values));
-    }
-
-
-    /*les données sont maintenant sous la forme :
-    * dataGroup[Chromosome][origine].values[la ligne de données]
-    * chaque ligne de données est sous la forme suivante :
-    * chromosome(<- useless) - origine(A_m,A_z...) - valeur(0.50,0.20,...) - x(notre abscisse)
-    * */
-
-    graphSetup2(dataGroup);
+    graphSetup2(groupedData);
 
 
 
@@ -272,8 +255,6 @@ function graphSetup(data) {
                 d.active = active;
             });
 
-        console.log(visu.clientWidth);
-
     });
 
 
@@ -281,9 +262,9 @@ function graphSetup(data) {
 
 function graphSetup2(data){
 
+
     window.accesData = data;
 
-    let chr = 1; //displayed chromosome
 
     let field = {
         'V' : ["Velut","#730800"],
@@ -299,7 +280,6 @@ function graphSetup2(data){
         'A_b' : ["Banks","#00ff00"],
     };
 
-    console.log(data);
 
     let visu = document.getElementById('graph');
 
@@ -313,26 +293,6 @@ function graphSetup2(data){
 
     let WIDTH = visu.clientWidth - marginLeft - marginRight;
     let HEIGHT = visu.clientHeight - marginTop - marginBottom;
-
-
-    //mise en place des axes.
-
-    /*let x = d3.scaleLinear()
-        .range([0, WIDTH])
-        .domain([572,37801687]);*/
-
-
-    let y = d3.scaleLinear()
-        .range([HEIGHT, 0])
-        .domain([0,1.20]);
-
-    /*let xAxis = d3.axisBottom()
-        .scale(x);*/
-
-    let yAxis = d3.axisLeft()
-        .scale(y);
-
-    //mise en place du zoom.
 
 
     //création de notre svg qui sera notre container pour notre graphique
@@ -354,17 +314,27 @@ function graphSetup2(data){
         .attr("x", 0)
         .attr("y", 0);
 
-    let graphlimit = svg.append('g')
+    svg.append('g')
         .attr("id","graphlimit")
         .attr("clip-path", "url(#clip)");
 
 
+    //mise en place des axes des abscisse et du zoom.
+
+    //y
+
+    let y = d3.scaleLinear()
+        .range([HEIGHT, 0])
+        .domain([0,1.20]);
 
 
-    ////////////////////////
+    let yAxis = d3.axisLeft()
+        .scale(y);
+
+    //x
 
     let x = d3.scaleLinear()
-        .domain([572,37801687])
+        .domain([572,50000000]) //TODO DYNAMIC DOMAIN
         .range([0, WIDTH]);
 
     let x2 = x.copy(); // reference.
@@ -376,39 +346,25 @@ function graphSetup2(data){
     d3.select("svg")
         .call(zoom);
 
-    let axis = d3.axisBottom().scale(x);
+    let xAxis = d3.axisBottom().scale(x);
+
+
+    function zoomed() {
+        x = d3.event.transform.rescaleX(x2);
+        xAxis.scale(x);
+        axisG.call(d3.axisBottom(x));
+        fillgraph(selectedChromosome,data,lineGen,svg,field,field); //à chaque mouvement on redessine nos courbes.
+    }
+
+
+    //On place nos axes dans notre svg
 
     let axisG = svg.append("g")
         .attr("class", "x axis")
         .attr("transform", "translate(0," + HEIGHT + ")")
-        .call(axis)
-        .attr("y", 6)
-        .attr("dy", ".71em");
-
-    function zoomed() {
-        x = d3.event.transform.rescaleX(x2);
-        axis.scale(x);
-        axisG.call(d3.axisBottom(x));
-        fillgraph(chr,data,lineGen,svg,field,graphlimit,field);
-    }
-
-
-
-
-    //////////////////////////
-
-
-
-
-
-
-
-    /*svg.append("g")
-        .attr("class", "x axis")
-        .attr("transform", "translate(0," + HEIGHT + ")")
         .call(xAxis)
         .attr("y", 6)
-        .attr("dy", ".71em");*/
+        .attr("dy", ".71em");
 
     svg.append("g")
         .attr("class", "y axis")
@@ -423,8 +379,6 @@ function graphSetup2(data){
 
 
 
-
-
     let lineGen = d3.line() //line generator
         .x(function(d) {
             return x(d.avr);
@@ -434,11 +388,31 @@ function graphSetup2(data){
         });/*.curve(d3.curveBasis);*/
 
 
+    // adding chr selector
 
-    let floorValueArray = {}; //origin floor value
+    d3.select("#floorContainer").append("select").attr("id","chromosomeSelector")
+        .on("change",function(){
+            selectedChromosome = document.getElementById("chromosomeSelector").value;
+            fillgraph(selectedChromosome,data,lineGen,svg,field);
+            refreshFixedFloor(fixedFloorArray,selectedChromosome);
+            refreshFloor(floorValueArray,selectedChromosome);
+        });
+
+
+    data.forEach(function(current_data,i){ //impossible d'utiliser .data() .enter() ici pour des raisons obscure.
+
+        d3.select("#chromosomeSelector")
+            .append("option")
+            .text(current_data.key)
+            .attr("value", i);
+    });
+
+
+
+
 
     let legend = d3.select("#legend").selectAll('g')
-        .data(data[0])
+        .data(data[selectedChromosome].values)
         .enter()
         .append('g')
         .attr('class', 'legend')
@@ -462,7 +436,6 @@ function graphSetup2(data){
 
     legend.append('text')
         .text(function(d) {
-            floorValueArray[d.key] = 0;
             return field[d.key][0];
         });
 
@@ -475,6 +448,20 @@ function graphSetup2(data){
         .attr("value","0")
         .attr("id", function(d){
             return d.key;
+        })
+        .on("mousedown",function(){
+            selectedOrigin = this.id;
+        })
+        .on("change",function(){
+            //x = (y-4) * [1 - (z/1.20)]
+            origine = getKeyByValue(field,selectedOrigin);
+            floorValueArray["chr"+selectedChromosome][selectedOrigin] = this.value;
+            refreshFloor(floorValueArray,selectedChromosome);
+            let z = (yHeight-4) * (1 - (this.value/1.20)); // mouse position == mouse[1]
+            let d = "M" + z + "," + WIDTH;
+            d += " " + z + "," + 0;
+            fixedFloorArray["chr"+selectedChromosome][selectedOrigin] = d;
+            refreshFixedFloor(fixedFloorArray,selectedChromosome);
         });
 
     document.getElementsByClassName("legend")[0].classList.add("clicked"); //ajout de la class clicked au premier node de la classe legend.
@@ -489,7 +476,7 @@ function graphSetup2(data){
         })
         .attr("class","chromosome");
 
-    fillgraph(chr,data,lineGen,svg,field);
+    fillgraph(selectedChromosome,data,lineGen,svg,field);
 
     let mouseG = svg.append("g")
         .attr("class", "mouse-over-effects");
@@ -499,28 +486,20 @@ function graphSetup2(data){
         .style("stroke", "black")
         .style("stroke-width", "1px")
         .style("opacity", "0")
-        //.style("stroke-dasharray","4")
         .style("transform", "rotate(90deg) translate(0,-"+ WIDTH + "px)");
-
-
-    /*let dashedLine  = document.createElement("path");
-    dashedLine.id = "V";
-    d3.select("#V") // ligne vertical noir.
-        .attr("class", "mouse-line")
-        .style("stroke", "black")
-        .style("stroke-width", "1px")
-        .style("opacity", "0")
-        .style("transform", "rotate(90deg) translate(0,-"+ WIDTH + "px)");*/
 
     mouseG.append("text")
         .attr("class","y-value");
 
 
     let yHeight = document.getElementById("y axis").firstChild.getBoundingClientRect().height; //retrouver la taille en px du df de y
-    let origine = getKeyByValue(field,originSelector); // Velut -> V ...
+    let origine = getKeyByValue(field,selectedOrigin); //getKeyByValue(filed,"Velut") retourne "V"
     inputSetup(); //place les inputs pour les seuils
-    let fixedFloorArray = fixedFloorArraySetup(); // crée le tableau qui contiendra les seuils fixe (ligne en pointillé)
-    fixedFloorSetup(fixedFloorArray,mouseG,WIDTH,field); // crée les lignes en pointillé (ainsi que le conteneur) selon le tableau crée au dessus.
+    let fixedFloorArray = fixedFloorArraySetup(); // crée le dico qui contiendra les positions pour les seuils fixe (ligne en pointillé)
+    let floorValueArray = fixedFloorArraySetup(); // crée le même dico mais avec les valeurs des seuils (0.5,0.25,...)
+    console.log(floorValueArray);
+    fixedFloorSetup(fixedFloorArray,mouseG,WIDTH,field); // crée les lignes en pointillé (ainsi que le conteneur) selon le dico crée au dessus.
+
 
 
     mouseG.append('svg:rect') // append a rect to catch mouse movements on canvas
@@ -556,33 +535,28 @@ function graphSetup2(data){
         })
         .on("click", function () {
             let mouse = d3.mouse(this);
-            origine = getKeyByValue(field,originSelector);
+            origine = getKeyByValue(field,selectedOrigin);
             //1.20 * [1 - (x/(y-4))]
-            floorValueArray[origine] = (1.20 * (1-(mouse[1]/(yHeight-4)))).toFixed(3); //Ajout de la valeur du seuil à notre FloorValueArray à l'index correspondant à l'origine actuellement séléctioné (originSelector)
-            console.log(floorValueArray);
-            refreshFloor(floorValueArray);
+            floorValueArray["chr"+selectedChromosome][origine] = (1.20 * (1-(mouse[1]/(yHeight-4)))).toFixed(3); //Ajout de la valeur du seuil à notre FloorValueArray à l'index correspondant à l'origine actuellement séléctioné (selectedOrigin)
+            refreshFloor(floorValueArray,selectedChromosome);
 
 
             //display fixed Floor (dashed line) :
 
-            fixedFloorArray["chr"+chr][origine] = document.getElementsByClassName("mouse-line")[0].attributes.d.value; //update fixedFloorArray with the value clicked
+            fixedFloorArray["chr"+selectedChromosome][origine] = document.getElementsByClassName("mouse-line")[0].attributes.d.value; //update fixedFloorArray with the value clicked
 
-            refreshFixedFloor(fixedFloorArray,chr,field); //As soon as our array is up to date we call this to refresh our dashed lines, this function will set opacity to 1 for a dashed line if a value in our current chromosome is != 0.
+            refreshFixedFloor(fixedFloorArray,selectedChromosome); //As soon as our array is up to date we call this to refresh our dashed lines, this function will set opacity to 1 for a dashed line if a value in our current chromosome is != 0.
 
         });
 
-
-
-
 }
-
 
 
 function inputSetup(){
     let legend = document.getElementById("legend");
     for (let i = 0; i < legend.children.length; i++) {
         legend.children[i].addEventListener("click",function(){
-            originSelector = legend.children[i].innerText;
+            selectedOrigin = legend.children[i].innerText;
             for (let j = 0; j < legend.children.length; j++) {
                 legend.children[j].classList.remove("clicked");
             }
@@ -595,6 +569,7 @@ function inputSetup(){
             legend.children[i].style.backgroundColor = "#ccc"
         });
     }
+
 }
 
 function getKeyByValue(object, value) {
@@ -615,7 +590,7 @@ function fillgraph(idChromosome,data,lineGen,svg,field){
 
     let currentChromosome = svg.select("#chr" + idChromosome);
 
-    data[idChromosome].forEach(function(d) {
+    data[idChromosome].values.forEach(function(d) {
         currentChromosome.append('path')
             .attr("class", "line")
             .attr("ancestor",function(){
@@ -630,12 +605,20 @@ function fillgraph(idChromosome,data,lineGen,svg,field){
     });
 }
 
-function refreshFloor(floorValueArray){
+function refreshFloor(floorValueArray,selectedChromosome){
     let input;
 
-    Object.keys(floorValueArray).forEach(function(key) {
-        input = document.getElementById(key);
-        input.value = floorValueArray[key];
+    Object.keys(floorValueArray).forEach(function(chromosomeKey) {
+
+        if(chromosomeKey === "chr" + selectedChromosome) {
+            console.log(floorValueArray);
+            Object.keys(floorValueArray[chromosomeKey]).forEach(function (origineKey) {
+                console.log(origineKey);
+                input = document.getElementById(origineKey);
+                input.value = floorValueArray[chromosomeKey][origineKey];
+
+            });
+        }
     });
 
     //fixedFloorArray["chr"+chr] = floorValueArray;
@@ -644,7 +627,7 @@ function refreshFloor(floorValueArray){
 }
 
 
-function curveOpacitySetup(){
+function curveOpacitySetup(){ //TODO USE d3 .on TO ADD EVENT INSTEAD OF THIS
     let displayedCurveClass = document.getElementsByClassName("displayedCurve");
     for (let checkbox of displayedCurveClass){
         checkbox.addEventListener("click",function(){
@@ -680,9 +663,7 @@ function refreshCurveOpacity(){
 
 function fixedFloorArraySetup() {
     let lines = document.getElementsByClassName("line");
-    console.log(lines);
     let chromosomes = document.getElementsByClassName("chromosome");
-    console.log(chromosomes);
 
     let i = 0;
 
@@ -697,7 +678,6 @@ function fixedFloorArraySetup() {
         }
         i++;
     }
-    console.log(fixedFloorArray);
     return fixedFloorArray;
 
 }
@@ -725,13 +705,26 @@ function fixedFloorSetup(fixedFloorArray, mouseG, WIDTH,field){
     });
 
 }
+/* l'idée ici est d'afficher et de positionner les seuils fixé (ligne pointillé) notre dico (fixedFloorArray) à la même structure que nos éléments
+* à savoir, fixedFloorArray[chromosome][origine] => valeur
+* et pour nos éléments :
+*<g id="chromosome1">
+*   <path id="Velut" >...</path>
+*   <path id="Schiz" >...</paht>
+*   [...]
+*
+*
+* <g>
+* <g id="chromosome2">[...]</g>
+*
+*
+*/
 
-function refreshFixedFloor(fixedFloorArray,chr){
+function refreshFixedFloor(fixedFloorArray,selectedChromosome){
 
-    console.log(fixedFloorArray);
     Object.keys(fixedFloorArray).forEach(function(chromosomeKey) {
 
-        if(chromosomeKey === "chr" + chr){
+        if(chromosomeKey === "chr" + selectedChromosome){
 
             Object.keys(fixedFloorArray[chromosomeKey]).forEach(function(origineKey) {
 
@@ -743,10 +736,13 @@ function refreshFixedFloor(fixedFloorArray,chr){
                 }
 
             });
+        }else{
+            Object.keys(fixedFloorArray[chromosomeKey]).forEach(function(origineKey) {
+                d3.select("#fixedFloor_" + chromosomeKey +"_"+ origineKey)
+                    .style("opacity",0);
+            });
         }
 
     });
 
 }
-
-
