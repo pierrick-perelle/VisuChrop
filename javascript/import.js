@@ -3,6 +3,8 @@ let dropArea = document.getElementById('drop-area');
 let fileInput = document.getElementById('fileElem');
 let selectedOrigin = "Velut"; // origin selected for floor
 let selectedChromosome = 0; // displayed chromosome
+let rawData = [];
+let haplotype = 2;
 
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
     dropArea.addEventListener(eventName, preventDefaults, false)
@@ -58,6 +60,7 @@ function handleFiles(files) {
 
 function resetgraph(){
     document.getElementById("graph").innerHTML = '';
+    document.getElementById("floorContainer").innerHTML = '';
 }
 
 /* PARSING DATA */
@@ -77,24 +80,39 @@ function parsing(data){
     * On ajoute également un champ average("avr") qui fait la moyenne entre le début("start") et la fin("end") dans chaque ligne de données.
     * */
 
-
     let i = 0;
+    let borneInf = 0;
     while(i < data.length){
+
+        borneInf = 0;
 
         let chr = data[i]["chr"];
 
-        let fillingData = JSON.parse(JSON.stringify(data[i])); //deep copy
-
-        fillingData["start"] = 0 + "";
-        fillingData["end"] = parseInt(data[i]["start"] - 1) + "";
-        data.splice(i, 0, fillingData);
-
         while(i < data.length && chr === data[i]["chr"] ){
-            data[i]["avr"] = ((parseInt(data[i]["start"]) + parseInt(data[i]["end"])) / 2).toFixed(0) + "";
+
+            let dataStuffing = JSON.parse(JSON.stringify(data[i]));
+
+            if(parseInt(data[i]["start"]) - borneInf !== 1){
+
+                dataStuffing["start"] = borneInf;
+                dataStuffing["end"] = parseInt(data[i]["start"] - 1);
+                borneInf = dataStuffing["end"];
+                dataStuffing["avr"] = ((parseInt(dataStuffing["start"]) + parseInt(dataStuffing["end"])) / 2).toFixed(0) + "";
+                data.splice(i, 0, dataStuffing);
+
+            }else {
+
+                borneInf = parseInt(data[i]["end"]);
+                data[i]["avr"] = ((parseInt(data[i]["start"]) + parseInt(data[i]["end"])) / 2).toFixed(0) + "";
+
+            }
+
+
             i++;
         }
     }
 
+    rawData = data;
 
     /*
     mappage (si ça se dit?) des données pour faire en sorte que les origines(A_m..) ne soient plus des colonnes mais des champs dans les lignes de données
@@ -263,6 +281,9 @@ function graphSetup(data) {
 function graphSetup2(data){
 
 
+    //TODO REFACTORING : 1 array instead of 2
+
+
     window.accesData = data;
 
 
@@ -319,13 +340,13 @@ function graphSetup2(data){
         .attr("clip-path", "url(#clip)");
 
 
-    //mise en place des axes des abscisse et du zoom.
+    //mise en place des axes des abscisses et du zoom.
 
     //y
 
     let y = d3.scaleLinear()
         .range([HEIGHT, 0])
-        .domain([0,1.20]);
+        .domain([0,1]);
 
 
     let yAxis = d3.axisLeft()
@@ -337,23 +358,23 @@ function graphSetup2(data){
         .domain([572,50000000]) //TODO DYNAMIC DOMAIN
         .range([0, WIDTH]);
 
-    let x2 = x.copy(); // reference.
+    let xAxis = d3.axisBottom()
+        .scale(x);
+
+    let x2 = x.copy();
 
     let zoom = d3.zoom()
-        .scaleExtent([1, 10])
+        .scaleExtent([1, 200])
         .on("zoom", zoomed);
 
     d3.select("svg")
         .call(zoom);
 
-    let xAxis = d3.axisBottom().scale(x);
-
-
     function zoomed() {
         x = d3.event.transform.rescaleX(x2);
         xAxis.scale(x);
         axisG.call(d3.axisBottom(x));
-        fillgraph(selectedChromosome,data,lineGen,svg,field,field); //à chaque mouvement on redessine nos courbes.
+        tracerCourbe(selectedChromosome,data,lineGen,svg,field,field); //à chaque mouvement on redessine nos courbes.
     }
 
 
@@ -377,8 +398,6 @@ function graphSetup2(data){
         .text("text-anchor","end");
 
 
-
-
     let lineGen = d3.line() //line generator
         .x(function(d) {
             return x(d.avr);
@@ -391,11 +410,13 @@ function graphSetup2(data){
     // adding chr selector
 
     d3.select("#floorContainer").append("select").attr("id","chromosomeSelector")
+        .style("margin-top","10%")
         .on("change",function(){
             selectedChromosome = document.getElementById("chromosomeSelector").value;
-            fillgraph(selectedChromosome,data,lineGen,svg,field);
-            refreshFixedFloor(fixedFloorArray,selectedChromosome);
-            refreshFloor(floorValueArray,selectedChromosome);
+            tracerCourbe(selectedChromosome,data,lineGen,svg,field);
+            refreshfloorPositions(floorPositions,selectedChromosome);
+            refreshFloor(floorValues,selectedChromosome);
+            refreshCurveOpacity()
         });
 
 
@@ -408,10 +429,7 @@ function graphSetup2(data){
     });
 
 
-
-
-
-    let legend = d3.select("#legend").selectAll('g')
+    let legend = d3.select("#floorContainer").append("div").attr("id","legend").selectAll('g')
         .data(data[selectedChromosome].values)
         .enter()
         .append('g')
@@ -444,24 +462,25 @@ function graphSetup2(data){
         .attr("type","number")
         .attr("step","0.001")
         .attr("max","1.20")
-        .attr("min","0")
-        .attr("value","0")
+        .attr("min","0.1")
+        .attr("value",1/haplotype)
         .attr("id", function(d){
             return d.key;
         })
         .on("mousedown",function(){
-            selectedOrigin = this.id;
+            selectedOrigin = field[this.id][0];
         })
-        .on("change",function(){
+        .on("input",function(){
             //x = (y-4) * [1 - (z/1.20)]
             origine = getKeyByValue(field,selectedOrigin);
-            floorValueArray["chr"+selectedChromosome][selectedOrigin] = this.value;
-            refreshFloor(floorValueArray,selectedChromosome);
-            let z = (yHeight-4) * (1 - (this.value/1.20)); // mouse position == mouse[1]
+            floorValues["chr"+selectedChromosome][origine] = this.value;
+            refreshFloor(floorValues,selectedChromosome);
+            let z = (yHeight-4) * (1 - (this.value/1)); // mouse position == mouse[1]
             let d = "M" + z + "," + WIDTH;
             d += " " + z + "," + 0;
-            fixedFloorArray["chr"+selectedChromosome][selectedOrigin] = d;
-            refreshFixedFloor(fixedFloorArray,selectedChromosome);
+            floorPositions["chr"+selectedChromosome][origine] = d;
+            refreshfloorPositions(floorPositions,selectedChromosome);
+            mosaique(floorValues,data,field);
         });
 
     document.getElementsByClassName("legend")[0].classList.add("clicked"); //ajout de la class clicked au premier node de la classe legend.
@@ -476,7 +495,7 @@ function graphSetup2(data){
         })
         .attr("class","chromosome");
 
-    fillgraph(selectedChromosome,data,lineGen,svg,field);
+    tracerCourbe(selectedChromosome,data,lineGen,svg,field);
 
     let mouseG = svg.append("g")
         .attr("class", "mouse-over-effects");
@@ -495,10 +514,9 @@ function graphSetup2(data){
     let yHeight = document.getElementById("y axis").firstChild.getBoundingClientRect().height; //retrouver la taille en px du df de y
     let origine = getKeyByValue(field,selectedOrigin); //getKeyByValue(filed,"Velut") retourne "V"
     inputSetup(); //place les inputs pour les seuils
-    let fixedFloorArray = fixedFloorArraySetup(); // crée le dico qui contiendra les positions pour les seuils fixe (ligne en pointillé)
-    let floorValueArray = fixedFloorArraySetup(); // crée le même dico mais avec les valeurs des seuils (0.5,0.25,...)
-    console.log(floorValueArray);
-    fixedFloorSetup(fixedFloorArray,mouseG,WIDTH,field); // crée les lignes en pointillé (ainsi que le conteneur) selon le dico crée au dessus.
+    let floorPositions = arraySetup(); // crée le dico qui contiendra les positions pour les seuils fixe (ligne en pointillé)
+    let floorValues = arraySetup(); // crée le même dico mais avec les valeurs des seuils (0.5,0.25,...)
+    floorPositionsSetup(floorPositions,mouseG,WIDTH,field,yHeight); // crée les lignes en pointillé (ainsi que le conteneur) selon le dico crée au dessus.
 
 
 
@@ -531,24 +549,26 @@ function graphSetup2(data){
                 .attr("transform",function() {
                     return "translate(" + 10 + "," + (mouse[1] - 10) + ")";
                 })
-                .text((1.20 * (1-(mouse[1]/(yHeight-4)))).toFixed(3)); //afficher au dessus de la ligne du tooltip la valeur de y
+                .text((1 * (1-(mouse[1]/(yHeight-4)))).toFixed(3)); //afficher au dessus de la ligne du tooltip la valeur de y
         })
         .on("click", function () {
             let mouse = d3.mouse(this);
             origine = getKeyByValue(field,selectedOrigin);
             //1.20 * [1 - (x/(y-4))]
-            floorValueArray["chr"+selectedChromosome][origine] = (1.20 * (1-(mouse[1]/(yHeight-4)))).toFixed(3); //Ajout de la valeur du seuil à notre FloorValueArray à l'index correspondant à l'origine actuellement séléctioné (selectedOrigin)
-            refreshFloor(floorValueArray,selectedChromosome);
+            floorValues["chr"+selectedChromosome][origine] = (1 * (1-(mouse[1]/(yHeight-4)))).toFixed(3); //Ajout de la valeur du seuil à notre FloorValueArray à l'index correspondant à l'origine actuellement séléctioné (selectedOrigin)
+            refreshFloor(floorValues,selectedChromosome);
 
 
             //display fixed Floor (dashed line) :
 
-            fixedFloorArray["chr"+selectedChromosome][origine] = document.getElementsByClassName("mouse-line")[0].attributes.d.value; //update fixedFloorArray with the value clicked
+            floorPositions["chr"+selectedChromosome][origine] = document.getElementsByClassName("mouse-line")[0].attributes.d.value; //update floorPositions with the value clicked
 
-            refreshFixedFloor(fixedFloorArray,selectedChromosome); //As soon as our array is up to date we call this to refresh our dashed lines, this function will set opacity to 1 for a dashed line if a value in our current chromosome is != 0.
+            refreshfloorPositions(floorPositions,selectedChromosome); //As soon as our array is up to date we call this to refresh our dashed lines, this function will set opacity to 1 for a dashed line if a value in our current chromosome is != 0.
 
+            mosaique(floorValues,data,field);
         });
 
+    refreshfloorPositions(floorPositions,selectedChromosome)
 }
 
 
@@ -570,13 +590,14 @@ function inputSetup(){
         });
     }
 
+
 }
 
 function getKeyByValue(object, value) {
     return Object.keys(object).find(key => object[key][0] === value); //object[key][0] car field est sous la forme key => ["nom","color"] ici c'est le nom que nous voulons.
 }
 
-function fillgraph(idChromosome,data,lineGen,svg,field){
+function tracerCourbe(idChromosome, data, lineGen, svg, field){
 
     d3.selectAll(".line").remove();
 
@@ -611,18 +632,13 @@ function refreshFloor(floorValueArray,selectedChromosome){
     Object.keys(floorValueArray).forEach(function(chromosomeKey) {
 
         if(chromosomeKey === "chr" + selectedChromosome) {
-            console.log(floorValueArray);
             Object.keys(floorValueArray[chromosomeKey]).forEach(function (origineKey) {
-                console.log(origineKey);
                 input = document.getElementById(origineKey);
                 input.value = floorValueArray[chromosomeKey][origineKey];
 
             });
         }
     });
-
-    //fixedFloorArray["chr"+chr] = floorValueArray;
-
 
 }
 
@@ -661,39 +677,48 @@ function refreshCurveOpacity(){
 
 }
 
-function fixedFloorArraySetup() {
+function arraySetup() {
     let lines = document.getElementsByClassName("line");
     let chromosomes = document.getElementsByClassName("chromosome");
 
     let i = 0;
 
-    let fixedFloorArray = {};
+    let array = {};
 
     for (let chromosome of chromosomes) {
 
-        fixedFloorArray[chromosome.id] = {};
+        array[chromosome.id] = {};
 
         for (let line of lines) {
-            fixedFloorArray[chromosome.id][line.attributes.ancestor.value] = 0;
+            array[chromosome.id][line.attributes.ancestor.value] = 1/haplotype;
         }
         i++;
     }
-    return fixedFloorArray;
+    return array;
 
 }
 
-function fixedFloorSetup(fixedFloorArray, mouseG, WIDTH,field){
-    Object.keys(fixedFloorArray).forEach(function(chromosomeKey) {
+function floorPositionsSetup(floorPositions, mouseG, WIDTH, field, yHeight){
 
-        let chrGroup = mouseG.append("g")
-            .attr("id","FF" + chromosomeKey); //FixedFloor
 
-        Object.keys(fixedFloorArray[chromosomeKey]).forEach(function(origineKey) {
+
+
+    Object.keys(floorPositions).forEach(function(chromosomeKey) {
+
+        let chrGroup = mouseG.append("g");
+
+        Object.keys(floorPositions[chromosomeKey]).forEach(function(origineKey) {
+
+            let z = (yHeight-4) * (1 - (document.getElementById(origineKey).value)/1); // mouse position == mouse[1]
+            let d = "M" + z + "," + WIDTH;
+            d += " " + z + "," + 0;
+
+            floorPositions[chromosomeKey][origineKey] = d;
 
 
             chrGroup.append("path") // ligne vertical noir.
-                .attr("id","fixedFloor_" + chromosomeKey +"_"+ origineKey)
-                .attr("d", 0)
+                .attr("id","floorPosition_" + chromosomeKey +"_"+ origineKey)
+                .attr("d", floorPositions[chromosomeKey][origineKey])
                 .style("stroke", field[origineKey][1])
                 .style("stroke-width", "1px")
                 .style("opacity", "0")
@@ -705,8 +730,8 @@ function fixedFloorSetup(fixedFloorArray, mouseG, WIDTH,field){
     });
 
 }
-/* l'idée ici est d'afficher et de positionner les seuils fixé (ligne pointillé) notre dico (fixedFloorArray) à la même structure que nos éléments
-* à savoir, fixedFloorArray[chromosome][origine] => valeur
+/* l'idée ici est d'afficher et de positionner les seuils fixé (ligne pointillé). Notre dico (fixedFloorArray) à la même structure que nos éléments
+* à savoir, floorPositions[chromosome][origine] => valeur
 * et pour nos éléments :
 *<g id="chromosome1">
 *   <path id="Velut" >...</path>
@@ -720,29 +745,182 @@ function fixedFloorSetup(fixedFloorArray, mouseG, WIDTH,field){
 *
 */
 
-function refreshFixedFloor(fixedFloorArray,selectedChromosome){
+function refreshfloorPositions(floorPositions, selectedChromosome){
 
-    Object.keys(fixedFloorArray).forEach(function(chromosomeKey) {
+    Object.keys(floorPositions).forEach(function(chromosomeKey) {
 
         if(chromosomeKey === "chr" + selectedChromosome){
 
-            Object.keys(fixedFloorArray[chromosomeKey]).forEach(function(origineKey) {
+            Object.keys(floorPositions[chromosomeKey]).forEach(function(origineKey) {
 
-                if(fixedFloorArray[chromosomeKey][origineKey] !== 0){
-
-                    d3.select("#fixedFloor_" + chromosomeKey +"_"+ origineKey)
-                        .attr("d", fixedFloorArray[chromosomeKey][origineKey])
-                        .style("opacity",1);
-                }
+                d3.select("#floorPosition_" + chromosomeKey +"_"+ origineKey)
+                    .attr("d", floorPositions[chromosomeKey][origineKey])
+                    .style("opacity",1);
 
             });
         }else{
-            Object.keys(fixedFloorArray[chromosomeKey]).forEach(function(origineKey) {
-                d3.select("#fixedFloor_" + chromosomeKey +"_"+ origineKey)
+            Object.keys(floorPositions[chromosomeKey]).forEach(function(origineKey) {
+                d3.select("#floorPosition_" + chromosomeKey +"_"+ origineKey)
                     .style("opacity",0);
             });
         }
 
     });
 
+}
+
+function mosaique(floorValue,data,field){
+
+    /*
+    1 0 0 200000 #7DC7D2
+    1 0 200001 400000 #7AA1D2
+    1 0 400001 600000 #7AA1D2
+    1 0 600001 800000 #BCE2CA
+    1 0 800001 1000000 #7AA1D2
+    1 0 1000001 1200000 #7AA1D2
+    1 0 1200001 1400000 #7DC7D2
+     */
+
+    //console.log(rawData);
+    //console.log(floorValueArray);
+    //console.log(data);
+
+
+    // préparation du tableau pour le bloc idéogramme
+
+    let mosaique = [];
+
+    for (let i = 0; i < Object.keys(floorValue).length; i++) {
+        for (let j = 0; j < data[i].values[0].values.length; j++) {
+            mosaique.push([]);
+        }
+    }
+
+    let metaBlocks = [];
+    let block = [];
+    let chromosomeKey = "";
+    let chr = 0;
+    let chrStr = "chr";
+    let originalChrNumber = "";
+    let countHaplotype = 0;
+    let groupedBlock = [];
+    //0(?=.)
+
+    for (let i = 0; i < mosaique.length; i++) {
+
+        originalChrNumber = rawData[i]["chr"].replace(/chr/g,"");
+
+        //Si ma clé est < 10 il faut rajouter un 0 pour que chr1 devienne chr01 (format des données).
+
+        if((chr+1) < 10){
+            chrStr = chrStr + "0";
+        }
+
+        if(rawData[i]["chr"] !== chrStr + (chr+1)){
+            chr++;
+        }
+        chromosomeKey = "chr"+chr; //chr1 when rawData[i]["chr"] say chr02
+
+
+        Object.keys(floorValue[chromosomeKey]).forEach(function(origineKey) {
+
+
+            if(countHaplotype !== -1) {
+
+                //Si pour la valeur de l'origine courante le seuil est dépassé, (détéction d'une dose) et qu'il reste un haplotype à alouer alors j'ajoute une ligne dans mon block
+                if (rawData[i][origineKey] >= floorValue[chromosomeKey][origineKey] && countHaplotype < haplotype) {
+                    block.push([originalChrNumber, countHaplotype, parseInt(rawData[i]["start"]), parseInt(rawData[i]["end"]), field[origineKey][1],'\n']);
+
+                    countHaplotype++;
+                }
+
+                //Si une dose est détécté mais que plus d'haplotype dispo je met tout le block en gris.
+                else if (rawData[i][origineKey] >= floorValue[chromosomeKey][origineKey] && countHaplotype >= haplotype) {
+                    block = []; //reset block
+                    for (let j = 0; j < haplotype; j++) {
+                        block.push([originalChrNumber, j, parseInt(rawData[i]["start"]), parseInt(rawData[i]["end"]), "#808080",'\n'])
+                    }
+                    countHaplotype = -1;
+                }
+
+            }
+
+        });
+
+        //Si à la fin de la recherche de dose il reste de la place je la remplie avec du gris.
+        if(block.length < haplotype){
+            let emplacementRestant = haplotype - block.length;
+            for (let j = 0; j < emplacementRestant; j++) {
+                block.push([originalChrNumber,countHaplotype,parseInt(rawData[i]["start"]),parseInt(rawData[i]["end"]),"#808080",'\n']);
+                countHaplotype++;
+            }
+        }
+
+
+        countHaplotype = 0;
+        metaBlocks.push(block);
+        block = [];
+        chrStr = "chr";
+    }
+
+    groupedBlock = groupByColor(metaBlocks);
+
+    metaBlocks = [];
+    for (let block of groupedBlock){
+        metaBlocks.push(block.flat(1));
+    }
+
+    let strMosaique = metaBlocks.join(" ").replace(/,/g,' ');
+    console.log(strMosaique);
+    strMosaique = strMosaique.replace(/^ +/gm,"");
+    console.log(strMosaique);
+
+
+    dl.href="data:text/plain,"+encodeURIComponent(strMosaique);
+
+}
+
+function groupByColor(metaBlocks){
+
+    let group = {};
+    let colorInBlock = [];
+
+    for (let i = 0; i < metaBlocks.length; i++) {
+
+        for (let j = 0; j < metaBlocks[i].length; j++) {
+
+            if(!(metaBlocks[i][j][4] in group)){
+
+                group[metaBlocks[i][j][4]] = metaBlocks[i][j][1];
+
+            }else if(metaBlocks[i][j][1] !== group[metaBlocks[i][j][4]]){
+
+                for (let k = 0; k < metaBlocks[i].length; k++) {
+                    colorInBlock.push(metaBlocks[i][k][4]);
+                }
+
+                if(!(colorInBlock => colorInBlock.every(v => v === colorInBlock[0]))){ //Si il y a des couleurs différentes dans ce block.
+
+                    console.log(metaBlocks[i][j][1]);
+                    console.log(group[metaBlocks[i][j][4]]);
+                    console.log(metaBlocks[i][j][1] + " changed" + " color " + metaBlocks[i][j][4]);
+
+                    let typeLeft = metaBlocks[i][j][1];
+                    let typeTaken = group[metaBlocks[i][j][4]];
+                    metaBlocks[i][j][1] = group[metaBlocks[i][j][4]];
+
+                    for (let k = 0; k < metaBlocks[i].length; k++) {
+                        if (metaBlocks[i][k][1] === typeTaken) {
+                            metaBlocks[i][k][1] = typeLeft;
+                        }
+                    }
+                }
+            }
+
+            colorInBlock = [];
+
+        }
+    }
+    console.log(group);
+    return metaBlocks;
 }
