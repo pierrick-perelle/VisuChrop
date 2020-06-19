@@ -65,11 +65,11 @@ function parsing(data){
 
             let dataStuffing = JSON.parse(JSON.stringify(data[i]));
 
-            if(parseInt(data[i]["start"]) - borneInf !== 1){
+            if(parseInt(data[i]["start"]) - borneInf !== 0){
 
                 dataStuffing["start"] = borneInf + "";
-                dataStuffing["end"] = (parseInt(data[i]["start"] - 1)) + "";
-                borneInf = dataStuffing["end"];
+                dataStuffing["end"] = parseInt(data[i]["start"]) + "";
+                borneInf = parseInt(dataStuffing["end"]);
                 dataStuffing["avr"] = (((parseInt(dataStuffing["start"]) + parseInt(dataStuffing["end"])) / 2).toFixed(0)) + "";
                 data.splice(i, 0, dataStuffing);
 
@@ -82,6 +82,8 @@ function parsing(data){
             i++;
         }
     }
+
+    console.log(data);
 
     rawData = data;
 
@@ -137,31 +139,31 @@ function parsing(data){
 
 ///////////////////////CREATION DU GRAPHIQUE//////////////////////////////////////
 
-import {inputSetup, getKeyByValue, refreshFloor, curveOpacitySetup, refreshCurveOpacity, arraySetup, floorPositionsSetup, refreshfloorPositions, tracerCourbe} from "./graph";
+import {getKeyByValue, refreshFloor, curveOpacitySetup, refreshCurveOpacity, arraySetup, floorPositionsSetup, refreshfloorPositions, tracerCourbe} from "./graph";
 
 let selectedOrigin = "Velut"; // origin selected for floor
 let selectedChromosome = 0; // displayed chromosome
 let haplotype = 2;
 let WIDTH = 0;
 let HEIGHT = 0;
+let ancestorsNameColor = {
+    'V' : ["Velut","#730800"],
+    'T' : ["Texti","#ffff00"],
+    'S' : ["Schiz","#660099"],
+    'E' : ["Enset","#22780f"],
+    'B' : ["Balbi","#FFFFFF"],
+    'A_z' : ["Zebri","#ff0000"],
+    'A_u' : ["Sumsat","#1034a6"],
+    'A_s' : ["Bursa","#ef9b0f"],
+    'A_m' : ["Malac","#0000ff"],
+    'A_j' : ["PJB","#ff00ff"],
+    'A_b' : ["Banks","#00ff00"],
+};
+
+let ancestorsNameColorBackup = JSON.parse(JSON.stringify(ancestorsNameColor));
+
 
 function graphSetup(data){
-
-
-    let ancestors = {
-        'V' : ["Velut","#730800"],
-        'T' : ["Texti","#ffff00"],
-        'S' : ["Schiz","#660099"],
-        'E' : ["Enset","#22780f"],
-        'B' : ["Balbi","#FFFFFF"],
-        'A_z' : ["Zebri","#ff0000"],
-        'A_u' : ["Sumsat","#1034a6"],
-        'A_s' : ["Bursa","#ef9b0f"],
-        'A_m' : ["Malac","#0000ff"],
-        'A_j' : ["PJB","#ff00ff"],
-        'A_b' : ["Banks","#00ff00"],
-    };
-
 
     let visu = document.getElementById('graph');
 
@@ -237,7 +239,7 @@ function graphSetup(data){
         x = d3.event.transform.rescaleX(x2);
         xAxis.scale(x);
         axisG.call(d3.axisBottom(x));
-        tracerCourbe(selectedChromosome,data,lineGen,svg,ancestors,ancestors); //à chaque mouvement on redessine nos courbes.
+        tracerCourbe(selectedChromosome,data,lineGen,svg,ancestorsNameColor); //à chaque mouvement on redessine nos courbes.
     }
 
 
@@ -274,17 +276,57 @@ function graphSetup(data){
         });/*.curve(d3.curveBasis);*/
 
 
-    //Création du selecteur de chromosome (dropdown)
+    //Création du selecteur de chromosome (dropdown) et du resetColor
 
-    d3.select("#floorContainer").append("select").attr("id","chromosomeSelector")
-        .style("margin-top","10%")
+    let container = d3.select("#floorContainer").append("div")
+        .attr("id","top_part");
+
+    //Chromosome selector
+
+    container.append("select")
+        .attr("id","chromosomeSelector")
         .on("change",function(){
             selectedChromosome = document.getElementById("chromosomeSelector").value;
-            refreshfloorPositions(floorPositions,selectedChromosome);
-            refreshFloor(floorValues,selectedChromosome);
-            refreshCurveOpacity();
+            globalUpdate(floorValues,selectedChromosome,floorPositions,data);
+            tracerCourbe(selectedChromosome,data,lineGen,svg,ancestorsNameColor,ancestorsNameColor);
+        });
 
-            tracerCourbe(selectedChromosome,data,lineGen,svg,ancestors);
+    //ResetColor button
+
+    container.append("input")
+        .attr("type","button")
+        .attr("value","reset colors")
+        .style("padding","5px")
+        .style("background","#ccc")
+        .style("cursor", "pointer")
+        .style("border-radius","5px")
+        .style("border","1px solid #ccc")
+        .on("mouseover",function(){
+            this.style.backgroundColor = "#dbdbdb";
+        })
+        .on("mouseout",function(){
+            this.style.backgroundColor = "#ccc";
+        })
+        .on("mousedown",function(){
+            this.style.backgroundColor = "#aaa";
+        })
+        .on("mouseup",function(){
+            this.style.backgroundColor = "#dbdbdb";
+        })
+        .on("click",function(){
+            //reset color in my array
+            ancestorsNameColor = JSON.parse(JSON.stringify(ancestorsNameColorBackup));
+
+            //apply new array to input's values
+            let colorsInputs = document.getElementsByClassName("color");
+            for(let color of colorsInputs) {
+                let ancestorsId = color.parentNode.lastChild.id;
+                color.value = ancestorsNameColor[ancestorsId][1];
+            }
+
+            //refresh graph and ideogram
+            mosaique(floorValues,data);
+            tracerCourbe(selectedChromosome,data,lineGen,svg,ancestorsNameColor,ancestorsNameColor);
         });
 
 
@@ -297,14 +339,14 @@ function graphSetup(data){
     });
 
 
-    //Création d'une légende pour chaque origine (ainsi que des inputs dedans seuil, affichage etc)
+    //Création d'une légende pour chaque origine (ainsi que des inputs : seuil, affichage etc)
 
     let legend = d3.select("#floorContainer").append("div").attr("id","legend").selectAll('g')
         .data(data[selectedChromosome].values)
         .enter()
         .append('g')
         .attr('class', 'legend')
-        .style("margin-bottom",""+((HEIGHT/ancestors.length)/2)+"px");
+        .style("margin-bottom",""+((HEIGHT/ancestorsNameColor.length)/2)+"px");
 
     legend.append('input')
         .attr("class","displayedCurve")
@@ -316,15 +358,24 @@ function graphSetup(data){
 
     curveOpacitySetup();
 
-    legend.append('div')
+    legend.append('input')
         .attr("class","color")
-        .style("background-color",function(d){
-            return ancestors[d.key][1];
+        .attr("type","color")
+        .attr("value",function(d){
+            return ancestorsNameColor[d.key][1];
+        })
+        .on("change",function(){
+            let ancestorsId = this.parentNode.lastChild.id;
+            ancestorsNameColor[ancestorsId][1] = this.value;
+            mosaique(floorValues,data);
+            tracerCourbe(selectedChromosome,data,lineGen,svg,ancestorsNameColor);
         });
 
+
     legend.append('text')
+        .style("width","30%")
         .text(function(d) {
-            return ancestors[d.key][0];
+            return ancestorsNameColor[d.key][0];
         });
 
     legend.append('input')
@@ -338,28 +389,26 @@ function graphSetup(data){
             return d.key;
         })
         .on("mousedown",function(){
-            selectedOrigin = ancestors[this.id][0];
+            selectedOrigin = ancestorsNameColor[this.id][0];
         })
         .on("change",function(){
             //x = (y-4) * [1 - (z/1.20)]
-            origine = getKeyByValue(ancestors,selectedOrigin);
+            origine = getKeyByValue(ancestorsNameColor,selectedOrigin);
             floorValues[origine] = parseFloat(this.value);
-            refreshFloor(floorValues,selectedChromosome);
             let z = (yHeight-4) * (1 - (this.value/1)); // mouse position == mouse[1]
             let d = "M" + z + "," + WIDTH;
             d += " " + z + "," + 0;
             floorPositions[origine] = d;
-            refreshfloorPositions(floorPositions,selectedChromosome);
-            mosaique(floorValues,data,ancestors);
+            globalUpdate(floorValues,selectedChromosome,floorPositions,data);
         });
 
     document.getElementsByClassName("legend")[0].classList.add("clicked"); //ajout de la class clicked au premier node de la classe legend.
 
-    inputSetup(); //Ajout de nos eventListener sur les légendes les checkbox, les seuils etc..
+    legendSetup(); //Ajout de nos eventListener sur les légendes les checkbox, les seuils etc..
 
     //Tout est prêt pour tracer nos courbes.
 
-    tracerCourbe(selectedChromosome,data,lineGen,svg,ancestors);
+    tracerCourbe(selectedChromosome,data,lineGen,svg,ancestorsNameColor);
 
     //A partir d'ici c'est l'ajout des tooltips, des seuils et de leurs intéractions
 
@@ -380,10 +429,10 @@ function graphSetup(data){
 
 
     let yHeight = document.getElementById("yaxis").firstChild.getBoundingClientRect().height; //retrouver la taille en px du df de y
-    let origine = getKeyByValue(ancestors,selectedOrigin); //getKeyByValue(filed,"Velut") retourne "V"
+    let origine = getKeyByValue(ancestorsNameColor,selectedOrigin); //getKeyByValue(ancestorsNameColor,"Velut") retourne "V"
     let floorPositions = arraySetup(haplotype); // crée le dico qui contiendra les positions pour les seuils fixe (ligne en pointillé)
     let floorValues = arraySetup(haplotype); // crée le même dico mais avec les valeurs des seuils (0.5,0.25,...)
-    floorPositionsSetup(floorPositions,mouseG,WIDTH,ancestors,yHeight); // crée les lignes en pointillé (ainsi que le conteneur) selon le dico crée au dessus.
+    floorPositionsSetup(floorPositions,mouseG,WIDTH,ancestorsNameColor,yHeight); // crée les lignes en pointillé (ainsi que le conteneur) selon le dico crée au dessus.
 
 
     mouseG.append('svg:rect') // append a rect to catch mouse movements on canvas
@@ -419,22 +468,45 @@ function graphSetup(data){
         })
         .on("click", function () {
             let mouse = d3.mouse(this);
-            origine = getKeyByValue(ancestors,selectedOrigin);
+            origine = getKeyByValue(ancestorsNameColor,selectedOrigin);
             //1.20 * [1 - (x/(y-4))]
-            floorValues[origine] = parseFloat((1-(mouse[1]/(yHeight-4))).toFixed(3)); //Ajout de la valeur du seuil à notre FloorValueArray à l'index correspondant à l'origine actuellement séléctioné (selectedOrigin)
-            refreshFloor(floorValues,selectedChromosome);
-
+            floorValues[origine] = parseFloat((1-(mouse[1]/(yHeight-4))).toFixed(3)); //Ajout de la valeur du seuil à notre FloorValue à l'origine actuellement séléctioné (selectedOrigin)
 
             //display fixed Floor (dashed line) :
 
             floorPositions[origine] = document.getElementsByClassName("mouse-line")[0].attributes.d.value; //update floorPositions with the value clicked
 
-            refreshfloorPositions(floorPositions,selectedChromosome); //As soon as our array is up to date we call this to refresh our dashed lines, this function will set opacity to 1 for a dashed line if a value in our current chromosome is != 0.
-
-            mosaique(floorValues,data,ancestors);
+            globalUpdate(floorValues,selectedChromosome,floorPositions,data);
         });
+
+    globalUpdate(floorValues,selectedChromosome,floorPositions,data);
+}
+
+function legendSetup(){
+    let legend = document.getElementById("legend");
+    for (let i = 0; i < legend.children.length; i++) {
+        legend.children[i].addEventListener("click",function(){
+            selectedOrigin = legend.children[i].innerText;
+            for (let j = 0; j < legend.children.length; j++) {
+                legend.children[j].classList.remove("clicked");
+            }
+            legend.children[i].classList.add("clicked");
+        });
+        legend.children[i].addEventListener("mouseover", function () {
+            legend.children[i].style.backgroundColor = "#dbdbdb"
+        });
+        legend.children[i].addEventListener("mouseout", function () {
+            legend.children[i].style.backgroundColor = "#ccc"
+        });
+    }
+
+}
+
+function globalUpdate(floorValues,selectedChromosome,floorPositions,data){
+    refreshCurveOpacity();
+    refreshFloor(floorValues,selectedChromosome);
     refreshfloorPositions(floorPositions,selectedChromosome);
-    mosaique(floorValues,data,ancestors);
+    mosaique(floorValues,data);
 }
 
 ///////////////////CREATION DES DONNEES ET SETUP POUR IDEOGRAM///////////////////////
@@ -442,7 +514,7 @@ function graphSetup(data){
 import {order, convertStrtoRangeSet, groupByColor} from "./mosaique";
 
 
-function mosaique(floorValue,data,field){
+function mosaique(floorValue){
 
 
     /*
@@ -455,8 +527,7 @@ function mosaique(floorValue,data,field){
     1 0 1200001 1400000 #7DC7D2
      */
 
-    console.log(floorValue);
-    console.log(data);
+    console.log(ancestorsNameColor);
 
     // préparation du tableau pour le bloc idéogramme
 
@@ -485,7 +556,7 @@ function mosaique(floorValue,data,field){
 
                     for (let j = 0; j <= haplotype - countHaplotype; j++) {
                         if(rawData[i][origineKey] >= (floorValue[origineKey]*(j+1)) && countHaplotype < haplotype){
-                            block.push([originalChrNumber, countHaplotype, parseInt(rawData[i]["start"]), parseInt(rawData[i]["end"]), field[origineKey][1],'\n']);
+                            block.push([originalChrNumber, countHaplotype, parseInt(rawData[i]["start"]), parseInt(rawData[i]["end"]), ancestorsNameColor[origineKey][1],'\n']);
                             countHaplotype++;
                         }
                     }
@@ -533,6 +604,8 @@ function mosaique(floorValue,data,field){
     let strMosaique = metaBlocks.join(" ").replace(/,/g,' ');
     strMosaique = strMosaique.replace(/^ +/gm,"");
 
+    let dl = document.getElementById("dl");
+
     dl.href="data:text/plain,"+encodeURIComponent(strMosaique);
 
 
@@ -558,6 +631,6 @@ function ideogramConfig(mosaique){
         chrWidth: HEIGHT/50,
     };
 
-    let ideogram = new Ideogram(config);
+    new Ideogram(config);
 
 }

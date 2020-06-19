@@ -1,21 +1,3 @@
-export function inputSetup(){
-    let legend = document.getElementById("legend");
-    for (let i = 0; i < legend.children.length; i++) {
-        legend.children[i].addEventListener("click",function(){
-            selectedOrigin = legend.children[i].innerText;
-            for (let j = 0; j < legend.children.length; j++) {
-                legend.children[j].classList.remove("clicked");
-            }
-            legend.children[i].classList.add("clicked");
-        });
-        legend.children[i].addEventListener("mouseover", function () {
-            legend.children[i].style.backgroundColor = "#dbdbdb"
-        });
-        legend.children[i].addEventListener("mouseout", function () {
-            legend.children[i].style.backgroundColor = "#ccc"
-        });
-    }
-}
 
 export function getKeyByValue(object, value) {
     return Object.keys(object).find(key => object[key][0] === value); //object[key][0] car field est sous la forme key => ["nom","color"] ici c'est le nom que nous voulons.
@@ -52,7 +34,7 @@ export function refreshFloor(floorValues){
 }
 
 
-export function curveOpacitySetup(){ //TODO USE d3 .on TO ADD EVENT INSTEAD OF THIS
+export function curveOpacitySetup(){
     let displayedCurveClass = document.getElementsByClassName("displayedCurve");
     for (let checkbox of displayedCurveClass){
         checkbox.addEventListener("click",function(){
@@ -98,7 +80,7 @@ export function arraySetup(haplotype) {
 
 }
 
-export function floorPositionsSetup(floorPositions, mouseG, WIDTH, field, yHeight){
+export function floorPositionsSetup(floorPositions, mouseG, WIDTH, ancestorsNameColor, yHeight){
 
 
     let chrGroup = mouseG.append("g");
@@ -115,7 +97,7 @@ export function floorPositionsSetup(floorPositions, mouseG, WIDTH, field, yHeigh
         chrGroup.append("path") // ligne vertical noir.
             .attr("id","floorPosition_" + origineKey)
             .attr("d", floorPositions[origineKey])
-            .style("stroke", field[origineKey][1])
+            .style("stroke", ancestorsNameColor[origineKey][1])
             .style("stroke-width", "1px")
             .style("opacity", "1")
             .style("stroke-dasharray", "4")
