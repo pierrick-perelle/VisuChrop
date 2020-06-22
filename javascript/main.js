@@ -1,5 +1,5 @@
 
-import {resetgraph, showupConfig} from "./import";
+import {resetgraph, showupConfig} from "./import.js";
 
 let dropArea = document.getElementById('drop-area');
 let fileInput = document.getElementById('fileElem');
@@ -29,7 +29,7 @@ function handleFiles(files) {
         parsing(data);
         showupConfig();
     };
-    reader.onerror = function (e) {
+    reader.onerror = function () {
         alert("Echec de chargement du fichier");
     }
 }
@@ -139,7 +139,7 @@ function parsing(data){
 
 ///////////////////////CREATION DU GRAPHIQUE//////////////////////////////////////
 
-import {getKeyByValue, refreshFloor, curveOpacitySetup, refreshCurveOpacity, arraySetup, floorPositionsSetup, refreshfloorPositions, tracerCourbe} from "./graph";
+import {getKeyByValue, refreshFloor, curveOpacitySetup, refreshCurveOpacity, arraySetup, floorPositionsSetup, refreshfloorPositions, tracerCourbe} from "./graph.js";
 
 let selectedOrigin = "Velut"; // origin selected for floor
 let selectedChromosome = 0; // displayed chromosome
@@ -511,7 +511,7 @@ function globalUpdate(floorValues,selectedChromosome,floorPositions,data){
 
 ///////////////////CREATION DES DONNEES ET SETUP POUR IDEOGRAM///////////////////////
 
-import {order, convertStrtoRangeSet, groupByColor} from "./mosaique";
+import {order, convertStrtoRangeSet, groupByColor} from "./mosaique.js";
 
 
 function mosaique(floorValue){
