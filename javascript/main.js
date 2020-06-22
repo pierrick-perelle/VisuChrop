@@ -287,7 +287,6 @@ function graphSetup(data){
         .attr("id","chromosomeSelector")
         .on("change",function(){
             selectedChromosome = document.getElementById("chromosomeSelector").value;
-            globalUpdate(floorValues,selectedChromosome,floorPositions,data);
             tracerCourbe(selectedChromosome,data,lineGen,svg,ancestorsNameColor,ancestorsNameColor);
         });
 
