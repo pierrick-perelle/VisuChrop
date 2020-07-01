@@ -43,14 +43,15 @@ export function groupByColor(metaBlocks){
 
 export function order(block,haplotype){
 
+    //les chromosomes sont obligé de se suivre : chr03 puis chr04...
+
     // forme :  chr 1 : tout les bloc de l’haplotype 1
     //          chr 1 : tout les blocs de l’haplotype 2
     //          chr 2 : tout les bloc de l’haplotype 1
     //          chr 2 : tout les bloc de l’haplotype 2
 
-
     let tab = [];
-    let currentChr = "01";
+    let currentChr = block[0][0][0];
     let lineCount = 0;
 
     while(lineCount !== -1) {
@@ -89,16 +90,20 @@ export function order(block,haplotype){
 
 export function convertStrtoRangeSet(strMosaique,haplotype){
 
-    let rangeSet = strMosaique.trim().split("\n").map(function(x){
+    let rangeSet = strMosaique.trim().split("\n").map(function(cur){
 
-        let array = x.trim().split(" ");
+        let array = cur.trim().split(" ");
 
         let ploidyArray = [];
-        for (let i = 0; i < haplotype; i++) {
-            ploidyArray[i] = 0;
-        }
 
-        ploidyArray[array[1]] = 1;
+        for (let i = 0; i < haplotype; i++) {
+            if(i === parseInt(array[1])) {
+                ploidyArray[i] = 1;
+            }else{
+                ploidyArray[i] = 0;
+            }
+
+        }
 
         return {
             chr:parseInt(array[0]),
@@ -110,3 +115,65 @@ export function convertStrtoRangeSet(strMosaique,haplotype){
     });
     return rangeSet;
 }
+
+export function ploidyDescGenerator(haplotype,chrNumber){
+
+    /*
+    ploidyDesc: [
+        'ABC',
+        'ABC',
+        'ABC',
+        'ABC',
+        'ABC',
+        'ABC',
+        'ABC',
+        'ABC',
+        'ABC',
+        'ABC',
+        'ABC',
+    ],
+    */
+
+    let ploidyDesc = [];
+
+    let chrStr = [];
+
+    for (let i = 0; i < chrNumber; i++) {
+
+        for (let i = 0; i < haplotype; i++) {
+            chrStr.push(String.fromCharCode('A'.charCodeAt(0) + i))
+        }
+        ploidyDesc.push(chrStr.join(""));
+        chrStr = [];
+    }
+
+    return ploidyDesc;
+
+
+
+
+}
+
+export function ancestorsGenerator(haploytpe){
+
+    /*
+    ancestors: {
+            'A': '#dea673',
+            'B': '#7396be',
+            'C': '#7396be'
+        },
+     */
+
+    let ancestors = {};
+    let letter = 'A';
+
+    for (let i = 0; i < haploytpe; i++) {
+        ancestors[letter+""] = "#000000";
+        letter = String.fromCharCode(letter.charCodeAt(0) + 1)
+    }
+    return JSON.stringify(ancestors);
+
+}
+
+ploidyDescGenerator(2,11);
+ancestorsGenerator(2);

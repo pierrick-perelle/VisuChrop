@@ -30,6 +30,25 @@ export function resetgraph(){
     document.getElementById("floorContainer").innerHTML = '';
 }
 
-export function showupConfig(){
-    document.getElementById("box2").style.animation = "in_config 1s ease forwards";
+function dropdownSetup(){
+   let sub1 = document.getElementById("sub1");
+   let sub2 = document.getElementById("sub2");
+   let box1 = document.getElementById("box1");
+   let box2 = document.getElementById("box2");
+
+
+   sub1.addEventListener("click",function (){
+       sub1.style.backgroundColor = "#f1faee";
+       sub2.style.backgroundColor = "";
+       box1.style.visibility = "visible";
+       box2.style.visibility = "hidden";
+   });
+    sub2.addEventListener("click",function (){
+        sub2.style.backgroundColor = "#f1faee";
+        sub1.style.backgroundColor = "";
+        box1.style.visibility = "hidden";
+        box2.style.visibility = "visible";
+    });
 }
+dropdownSetup();
+

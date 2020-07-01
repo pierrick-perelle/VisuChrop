@@ -73,7 +73,7 @@ export function arraySetup(haplotype) {
     let array = {};
 
     for (let line of lines) {
-        array[line.attributes.ancestor.value] = (1/haplotype.toFixed(3));
+        array[line.attributes.ancestor.value] = (1/haplotype).toFixed(3);
     }
 
     return array;

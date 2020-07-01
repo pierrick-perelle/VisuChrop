@@ -1,172 +1,138 @@
 
-import {resetgraph, showupConfig} from "./import.js";
+import {resetgraph} from "./import.js";
+import {checkColorFile,checkLenFile,checkDataFile} from "./checkFile.js";
+import {parsingData, parsingLen, parsingColor,randomColorGenerator,dataStuffing} from "./parse.js";
+import {order, convertStrtoRangeSet, groupByColor, ancestorsGenerator, ploidyDescGenerator} from "./mosaique.js";
+import {getKeyByValue, refreshFloor, curveOpacitySetup, refreshCurveOpacity, arraySetup, floorPositionsSetup, refreshfloorPositions, tracerCourbe} from "./graph.js";
 
 let dropArea = document.getElementById('drop-area');
-let fileInput = document.getElementById('fileElem');
-let data;
+let dataFileInput = document.getElementById('dataFile');
+let colorFileInput = document.getElementById('colorFile');
+let lenFileInput = document.getElementById('lenFile');
 
-////////////RECUPERATION DU FICHIER///////////////////////////////
+
+let haplotype = 2; //ploïdie
+
+let rawData; //Données brut, comme envoyé.
+let stuffedData; //Données brut, avec les lignes de bourrage. Sera pratique plus tard (généré à partir de rawData).
+let data; //Nos données parsé (généré à partir de stuffedData).
+
+let ancestorsNameColor; //Match les abréviation d'origine avec leurs noms complet ainsi qu'une couleur.
+
+let chrConfig; //J'en aurais besoins si l'haplotype est changé après que les données ai été envoyé.
+let mosaiqueConfig; //Version parsé pour ideogram.js de chrConfig
+
+////////////RECUPERATION DES FICHIERS///////////////////////////////
 
 dropArea.addEventListener('drop', handleDrop, false);
-fileInput.addEventListener('change',function(){
-    handleFiles(this.files);
+
+dataFileInput.addEventListener('change',function(e){
+    handleFiles(this.files,e.target.id);
 });
+colorFileInput.addEventListener('change',function(e){
+    handleFiles(this.files,e.target.id);
+});
+lenFileInput.addEventListener('change',function(e){
+    handleFiles(this.files,e.target.id);
+});
+
+document.getElementById("haplotype").value = haplotype;
+
+document.getElementById("haplotype").addEventListener('change',function(){
+    haplotype = document.getElementById("haplotype").value;
+});
+
+document.getElementById("submit").addEventListener("click",function(){
+
+    if(rawData === undefined){
+        alert("Fichier de données manquant");
+        throw "pas de données envoyé."
+    }
+    if(chrConfig === undefined){
+        alert("Fichier de configuration des chromosomes manquant.");
+        throw "Fichier de configuration des chromosomes manquant.";
+    }
+    else if(stuffedData === undefined) {
+        stuffedData = dataStuffing(rawData, chrConfig);
+        data = parsingData(stuffedData);
+    }
+    if (ancestorsNameColor === undefined) {
+        ancestorsNameColor = randomColorGenerator(data);
+    }
+    resetgraph();
+    graphSetup(data);
+});
+
+/**
+ * extrait le fichier qui a été drag'n'drop à partir de l'event
+ * @param e l'event.
+ */
 
 function handleDrop(e) {
     let dt = e.dataTransfer;
     let files = dt.files;
-
-    handleFiles(files)
+    handleFiles(files,e.target.id)
 }
 
-function handleFiles(files) {
-    resetgraph();
-    let reader = new FileReader();
+/**
+ * Lis le fichier (@file) et le traité suivant sont (@fileType). le contenue du fichier et parse par d3.tsvParse, puis le résultat est placé dans une variable globale.
+ * On place les résultats dans des variables globales, parce que les biologistes sont imprévisibles et qu'ils peuvent vouloir mettre les fichiers dans n'importe quel ordre (Loi de Murphy).
+ * @param files array. la liste des fichiers reçu par input. Ici on n'en reçoit qu'un à chaque fois donc on prends Files[0].
+ * @param fileType string. En pratique c'est l'ID de l'input appellant (e.id.target), celui-ci étant (color/len/data)File il nous permet de le traiter dans un switch. voir 1* et 2*
+ */
+
+function handleFiles(files,fileType) {
+    let fileName = fileType.replace("File",""); //1* colorFile -> color.
+    let reader = new FileReader();              //initalisation d'un reader pour lire le fichier, si si, un reader, pour lire.
     let file = files[0];
     reader.readAsText(file, "UTF-8");
     reader.onload = function (e) {
-        data = d3.tsvParse(e.target.result);
-        parsing(data);
-        showupConfig();
+        switch(fileName){                       //2*
+            case'data':
+                if(checkDataFile(d3.tsvParse(e.target.result))) {
+                    rawData = d3.tsvParse(e.target.result);
+                    dropArea.style.animation = "valid 1s ease forwards"; //Parce que sinon ils ne vont pas comprendre que leur fichier a bien été déposé.
+                }
+                break;
+            case'color':
+                if(checkColorFile(d3.tsvParse(e.target.result))) {
+                    ancestorsNameColor = parsingColor(d3.tsvParse(e.target.result));
+                }
+                break;
+            case'len':
+                if(checkLenFile(d3.tsvParse(e.target.result))) {
+                    chrConfig = d3.tsvParse(e.target.result);
+                    mosaiqueConfig = parsingLen(chrConfig);
+                }
+                break;
+        }
     };
     reader.onerror = function () {
         alert("Echec de chargement du fichier");
+        dropArea.style.backgroundImage = "invalid 1s ease forwards";
     }
 }
-
-////////////////////PARSING DES DONNEES////////////////////////////////
-
-let rawData = [];
-
-/**
- * cette fonction sert à travailler les données,
- * il est préférable de les avoir sous la forme d'un tableau dont chaque case correspond à un graphique.
- * maquette : data[graphique(ch0,chr1,...)][courbe(Velut,Schiz,...)]
- * les données sont trié par chromosome puis par origine
- * @param data un tableau contenant nos données.
- */
-
-function parsing(data){
-
-
-    /* Ajout d'une ligne de données factice qui va de la position 0 à la position de début('start') de la première vrai ligne de données (pour chaque chromosome)
-    * On ajoute également un champ average("avr") qui fait la moyenne entre le début("start") et la fin("end") dans chaque ligne de données.
-    * */
-
-    let i = 0;
-    let borneInf = 0;
-    while(i < data.length){
-
-        borneInf = 0;
-
-        let chr = data[i]["chr"];
-
-        while(i < data.length && chr === data[i]["chr"] ){
-
-            let dataStuffing = JSON.parse(JSON.stringify(data[i]));
-
-            if(parseInt(data[i]["start"]) - borneInf !== 0){
-
-                dataStuffing["start"] = borneInf + "";
-                dataStuffing["end"] = parseInt(data[i]["start"]) + "";
-                borneInf = parseInt(dataStuffing["end"]);
-                dataStuffing["avr"] = (((parseInt(dataStuffing["start"]) + parseInt(dataStuffing["end"])) / 2).toFixed(0)) + "";
-                data.splice(i, 0, dataStuffing);
-
-            }else {
-
-                borneInf = parseInt(data[i]["end"]);
-                data[i]["avr"] = (((parseInt(data[i]["start"]) + parseInt(data[i]["end"])) / 2).toFixed(0)) + "";
-
-            }
-            i++;
-        }
-    }
-
-    console.log(data);
-
-    rawData = data;
-
-    /*
-    mappage (si ça se dit?) des données pour faire en sorte que les origines(A_m..) ne soient plus des colonnes mais des champs dans les lignes de données
-    et qu'une valeur leur soit associée
-    on en profite pour enlever les colonnes start et end qui ne nous servent pas pour la suite. (on peut facilement les remettre si besoins
-    pour les mosaïques)
-    */
-
-    let dataByOrigin = data.columns.slice(3).map(function (id) {
-        return {
-            id: id,
-            values: data.map(function (d) {
-                return {chr: d.chr, valeur: parseFloat(d[id]),avr: parseFloat(d.avr)};
-            })
-        };
-    });
-
-
-    let parsedData = [];
-
-    /*
-    ajout des origines (A_m, A_z..)(initialement id du tableau) dans les lignes de données
-    Le tout est mis à la suite dans un nouveau tableau (parsedData)
-    */
-
-    for(let ancestors of dataByOrigin){
-        for(let line of ancestors.values){
-            line["origine"] = ancestors.id;
-            parsedData.push(line);
-        }
-    }
-
-    /* Ce qui nous permet d'utiliser la fonction D3.nest pour grouper nos données sur deux niveaux, d'abord par chromosome(chr1...) puis par origine(V...).*/
-
-    let groupedData = d3.nest()
-        .key(function(d) { return d.chr; })
-        .key(function(d) { return d.origine; })
-        .entries(parsedData);
-
-
-    /*
-     * le tableau groupedData est sous la forme suivante :
-     * GroupedData[Chromosome].values[origine].values[ligne de données]
-     * chaque ligne de données est sous la forme suivante :
-     * chromosome(chr1,chr2...) - origine(A_m,A_z...) - valeur(0.50,0.20,...) - avr(9000,3000000,...)
-     */
-
-    graphSetup(groupedData);
-
-}
-
 ///////////////////////CREATION DU GRAPHIQUE//////////////////////////////////////
 
-import {getKeyByValue, refreshFloor, curveOpacitySetup, refreshCurveOpacity, arraySetup, floorPositionsSetup, refreshfloorPositions, tracerCourbe} from "./graph.js";
-
-let selectedOrigin = "Velut"; // origin selected for floor
-let selectedChromosome = 0; // displayed chromosome
-let haplotype = 2;
-let WIDTH = 0;
+let selectedOrigin = "Velut";   // l'origine actuellement séléctionné dont le seuil sera modifié si modification il y a.
+let selectedChromosome = 0;     //index du chromosome séléctionné.
+let WIDTH = 0;                  //Width de la div qui contiendras le graph, pourquoi global ? Pourquoi pas ?
 let HEIGHT = 0;
-let ancestorsNameColor = {
-    'V' : ["Velut","#730800"],
-    'T' : ["Texti","#ffff00"],
-    'S' : ["Schiz","#660099"],
-    'E' : ["Enset","#22780f"],
-    'B' : ["Balbi","#FFFFFF"],
-    'A_z' : ["Zebri","#ff0000"],
-    'A_u' : ["Sumsat","#1034a6"],
-    'A_s' : ["Bursa","#ef9b0f"],
-    'A_m' : ["Malac","#0000ff"],
-    'A_j' : ["PJB","#ff00ff"],
-    'A_b' : ["Banks","#00ff00"],
-};
 
-let ancestorsNameColorBackup = JSON.parse(JSON.stringify(ancestorsNameColor));
-
+/**
+ * C'est ici qu'on va créé tous ce dont on a besoin pour notre graphique. On séléctionne les div déjà créée dans index.html et on append par dessus en ajoutant attribut style et eventListenier (.on() sous d3).
+ * D3 renvoie l'objet séléctionné ou modifié après chaque fonction ce qui donne la syntaxe particulière :
+ * d3.select("#madiv").attr("class","une_class") qui est équivalent à : document.getElementById("madiv").classList.add("une_class")
+ * @param data array nos données parsé. voir parse.js.
+ */
 
 function graphSetup(data){
 
-    let visu = document.getElementById('graph');
+    let ancestorsNameColorBackup = JSON.parse(JSON.stringify(ancestorsNameColor));
 
+    //Ici on va récupérer les dimensions de notre container.
+
+    let visu = document.getElementById('graph');
 
     let style = getComputedStyle(visu);
 
@@ -188,7 +154,7 @@ function graphSetup(data){
         .attr("transform", "translate(" + marginLeft + "," + marginTop + ")");
 
 
-    //création d'un clip path, tout tracée hors de cet élement ne sera pas affiché (résout le pb des courbes dépassant les axes lors du zoom)
+    //création d'un clip path, tous tracés hors de cet élement ne sera pas affichée (résout le problème des courbes dépassant les axes lors du zoom)
 
     svg.append("defs").append("svg:clipPath")
         .attr("id", "clip")
@@ -207,11 +173,12 @@ function graphSetup(data){
 
     //y
 
+    //ici on crée une échelle, domaine de définition + taille à l'écran.
     let y = d3.scaleLinear()
-        .range([HEIGHT, 0])
-        .domain([0,1]);
+        .range([HEIGHT, 0])     //la taille à l'écran.
+        .domain([0,1]);         //domaine de définition, comme en math.
 
-
+    //ici on crée un axe (axisLeft(), parce que ce sera notre ordonné et à gauche.) et on lui donne notre échelle crée plus haut (scale()).
     let yAxis = d3.axisLeft()
         .scale(y);
 
@@ -225,23 +192,6 @@ function graphSetup(data){
 
     let xAxis = d3.axisBottom()
         .scale(x);
-
-    let x2 = x.copy();
-
-    let zoom = d3.zoom()
-        .scaleExtent([1, 10])
-        .on("zoom", zoomed);
-
-    d3.select("svg")
-        .call(zoom);
-
-    function zoomed() {
-        x = d3.event.transform.rescaleX(x2);
-        xAxis.scale(x);
-        axisG.call(d3.axisBottom(x));
-        tracerCourbe(selectedChromosome,data,lineGen,svg,ancestorsNameColor); //à chaque mouvement on redessine nos courbes.
-    }
-
 
     //On place nos axes dans notre svg
 
@@ -264,6 +214,23 @@ function graphSetup(data){
         .attr("dy", ".71em")
         .text("Valeur de l'origine");
 
+    //ici on va créer le zoom. x notre échelle en place,1) x2 une copie sur laquelle on peut zoomer,2) quand un zoom a lieux,3) on copie x2 dans x,4)On re-échelonne xAxis (pour prendre en compte notre nouveaux df),5)On re-call xAxis sur notre élement axe (axisG),6) on refresh le graphique pour actualiser la position des données sur celui ci.
+
+    let x2 = x.copy();                         //1
+
+    let zoom = d3.zoom()
+        .scaleExtent([1, 10])               //échelle de zoom
+        .on("zoom", zoomed);                   //2
+
+    d3.select("svg")
+        .call(zoom);                           //on place notre zoom sur notre svg
+
+    function zoomed() {
+        x = d3.event.transform.rescaleX(x2);   //3
+        xAxis.scale(x);                        //4
+        axisG.call(d3.axisBottom(x));          //5
+        tracerCourbe(selectedChromosome,data,lineGen,svg,ancestorsNameColor); //6 à chaque zoom on redessine nos courbes.
+    }
 
     //déclaration de notre générateur de courbe
 
@@ -273,7 +240,7 @@ function graphSetup(data){
         })
         .y(function(d) {
             return y(d.valeur);
-        });/*.curve(d3.curveBasis);*/
+        });/*.curve(d3.curveBasis); Interpolation, pour avoir des courbes plus lisse mais fausse la lecture à l'oeil.*/
 
 
     //Création du selecteur de chromosome (dropdown) et du resetColor
@@ -510,11 +477,7 @@ function globalUpdate(floorValues,selectedChromosome,floorPositions,data){
 
 ///////////////////CREATION DES DONNEES ET SETUP POUR IDEOGRAM///////////////////////
 
-import {order, convertStrtoRangeSet, groupByColor} from "./mosaique.js";
-
-
 function mosaique(floorValue){
-
 
     /*
     1 0 0 200000 #7DC7D2
@@ -526,13 +489,12 @@ function mosaique(floorValue){
     1 0 1200001 1400000 #7DC7D2
      */
 
-    console.log(ancestorsNameColor);
 
     // préparation du tableau pour le bloc idéogramme
 
     let mosaique = [];
 
-    for (let i = 0; i < rawData.length; i++) {
+    for (let i = 0; i < stuffedData.length; i++) {
         mosaique.push([]);
     }
 
@@ -544,18 +506,18 @@ function mosaique(floorValue){
 
     for (let i = 0; i < mosaique.length; i++) {
 
-        originalChrNumber = rawData[i]["chr"].replace(/chr/g,"");
+        originalChrNumber = stuffedData[i]["chr"].replace(/chr/g,"");
 
         Object.keys(floorValue).forEach(function(origineKey) {
 
             if(countHaplotype !== -1) {
 
                 //Si pour la valeur de l'origine courante le seuil est dépassé, (détéction d'une dose) et qu'il reste un haplotype à alouer alors j'ajoute une ligne dans mon block
-                if (rawData[i][origineKey] >= floorValue[origineKey] && countHaplotype < haplotype) {
+                if (stuffedData[i][origineKey] >= floorValue[origineKey] && countHaplotype < haplotype) {
 
                     for (let j = 0; j <= haplotype - countHaplotype; j++) {
-                        if(rawData[i][origineKey] >= (floorValue[origineKey]*(j+1)) && countHaplotype < haplotype){
-                            block.push([originalChrNumber, countHaplotype, parseInt(rawData[i]["start"]), parseInt(rawData[i]["end"]), ancestorsNameColor[origineKey][1],'\n']);
+                        if(stuffedData[i][origineKey] >= (floorValue[origineKey]*(j+1)) && countHaplotype < haplotype){
+                            block.push([originalChrNumber, countHaplotype, parseInt(stuffedData[i]["start"]), parseInt(stuffedData[i]["end"]), ancestorsNameColor[origineKey][1],'\n']);
                             countHaplotype++;
                         }
                     }
@@ -563,10 +525,10 @@ function mosaique(floorValue){
                 }
 
                 //Si une dose est détécté mais que plus d'haplotype dispo je met tout le block en gris.
-                else if (rawData[i][origineKey] >= floorValue[origineKey] && countHaplotype >= haplotype) {
+                else if (stuffedData[i][origineKey] >= floorValue[origineKey] && countHaplotype >= haplotype) {
                     block = []; //reset block
                     for (let j = 0; j < haplotype; j++) {
-                        block.push([originalChrNumber, j, parseInt(rawData[i]["start"]), parseInt(rawData[i]["end"]), "#808080",'\n']);
+                        block.push([originalChrNumber, j, parseInt(stuffedData[i]["start"]), parseInt(stuffedData[i]["end"]), "#808080",'\n']);
                     }
                     countHaplotype = -1;
                 }
@@ -579,7 +541,7 @@ function mosaique(floorValue){
         if(block.length < haplotype){
             let emplacementRestant = haplotype - block.length;
             for (let j = 0; j < emplacementRestant; j++) {
-                block.push([originalChrNumber,countHaplotype,parseInt(rawData[i]["start"]),parseInt(rawData[i]["end"]),"#808080",'\n']);
+                block.push([originalChrNumber,countHaplotype,parseInt(stuffedData[i]["start"]),parseInt(stuffedData[i]["end"]),"#808080",'\n']);
                 countHaplotype++;
             }
         }
@@ -589,9 +551,11 @@ function mosaique(floorValue){
         block = [];
         chrStr = "chr";
 
+
     }
 
     let groupedBlock = groupByColor(metaBlocks);
+
     groupedBlock = order(groupedBlock,haplotype);
 
     metaBlocks = [];
@@ -603,19 +567,25 @@ function mosaique(floorValue){
     let strMosaique = metaBlocks.join(" ").replace(/,/g,' ');
     strMosaique = strMosaique.replace(/^ +/gm,"");
 
-    let dl = document.getElementById("dl");
 
-    dl.href="data:text/plain,"+encodeURIComponent(strMosaique);
-
-
-    ideogramConfig(strMosaique,haplotype);
+    ideogramConfig(strMosaique);
 
 }
 
 
 function ideogramConfig(mosaique){
 
-    let dataSet = convertStrtoRangeSet(mosaique);
+    let chrNumber;
+    let chr = {};
+
+    for (let i = 0; i < stuffedData.length; i++) {
+        chr[stuffedData[i]["chr"]] = 1;
+    }
+    chrNumber = Object.keys(chr).length;
+
+    let dataSet = convertStrtoRangeSet(mosaique,haplotype);
+    let ploidyDesc = ploidyDescGenerator(haplotype,chrNumber);
+    let ancestors = ancestorsGenerator(haplotype);
 
     let config = {
         rotatable:false,
@@ -628,8 +598,13 @@ function ideogramConfig(mosaique){
         chrMargin: 0,
         chrHeight: WIDTH*1.1,
         chrWidth: HEIGHT/50,
+        ancestors:ancestors,
+        ploidyDesc:ploidyDesc,
     };
 
     new Ideogram(config);
 
+
 }
+
+

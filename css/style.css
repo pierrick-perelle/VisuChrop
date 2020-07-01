@@ -1,6 +1,7 @@
 body{
-    margin:0px;
+    margin:0;
     overflow-x: hidden;
+    font-family: Helvetica, Arial, serif;
 }
 
 header{
@@ -25,7 +26,8 @@ header{
 
 
 #box1{
-    width:100%;
+    position:absolute;
+    width:100vw;
     height: 50vh;
     background-color: #f1faee;
     display:flex;
@@ -33,6 +35,7 @@ header{
     align-items: center;
     justify-content: center;
 }
+
 
 #browse{
     margin-top:2%;
@@ -50,18 +53,21 @@ header{
     margin-top:2%;
     margin-bottom:2%;
     padding: 20px;
-    background-image: url("../Assets/plus.svg");
+    background-image: url("../assets/plus.svg");
     background-repeat: no-repeat;
     background-position: center;
     background-size: 10%;
 }
 #box2{
-    width::100%;
-    height:0;
-    background-color: #a8dadc;
+    position:static;
+    width:100vw;
+    height: 50vh;
+    background-color: #f1faee;
     display:flex;
+    flex-direction:row;
     align-items: center;
-    justify-content: center;
+    justify-content: space-evenly;
+    right:0;
 }
 #box3{
     width:100%;
@@ -73,8 +79,7 @@ header{
 }
 #box4{
     width:100%;
-    background-color: #1d3557;
-    display:inline-block;
+    background-color: #FFFFFF;
 }
 footer{
     background-color: #282828;
@@ -114,39 +119,9 @@ p {
 .button:hover {
     background: #ddd;
 }
-#fileElem {
+#dataFile {
     display: none;
 }
-
-/* graphesetup
-
-
-.axis path {
-    fill: none;
-    stroke: #777;
-    shape-rendering: crispEdges;
-}
-.axis text {
-    font-family: Lato;
-    font-size: 13px;
-}
-#visualisation{
-    width:100%;
-    height: 100%;
-    display:flex;
-    align-items: center;
-    justify-content: center;
-    margin: 3% 6% 3% 3%;
-}
-
-.legend {
-    font-size: 14px;
-    font-weight: bold;
-    position: relative;
-}
-*/
-
-/*graphSetup*/
 
 
 #visualisation{
@@ -164,7 +139,7 @@ p {
     display:flex;
     align-items: center;
     justify-content: center;
-    margin: 3% 0% 3% 3%;
+    margin: 3% 0 3% 3%;
 }
 
 #selector{
@@ -235,24 +210,33 @@ p {
 .clicked{
     color:white;
 }
+.selectedMenu{
+    background-color: #f1faee;
+}
 
 .color{
     width: 25px;
-    background-color: black;
     padding:0;
 }
 .floor{
     width:25%;
 }
 
-/* animation */
-
-@keyframes in_config{
+@keyframes valid {
     from{
-        height:0;
+        background-image: url('../assets/plus.svg');
     }
-    to {
-        height:50vh;
+    to{
+        background-image: url("../assets/correct.svg");
+    }
+}
+
+@keyframes invalid {
+    from{
+        background-image: url('../assets/plus.svg');
+    }
+    to{
+        background-image: url("../assets/remove.svg");
     }
 }
 
@@ -265,8 +249,50 @@ p {
     height: 10%;
 }
 
+.dropbtn {
+    color: black;
+    padding: 16px;
+    font-size: 16px;
+    border: none;
+    cursor: pointer;
+    width:50vw;
+}
 
+#sub1:hover{
+    background-color: #ddd;
+}
+#sub2:hover{
+    background-color: #ddd;
+}
 
+#sub1{
+    background-color: #ccc;
+}
+
+#sub2{
+    background-color: #ccc;
+}
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+#menu{
+    display: flex;
+    flex-direction: row;
+    justify-content: space-evenly;
+
+}
+
+.help{
+    height:2vh;
+    vertical-align: text-bottom;
+}
+
+.arrow{
+    height:2vh;
+    vertical-align: center;
+}
 
 
 

@@ -1,5 +1,5 @@
 let dropArea = document.getElementById('drop-area');
-let fileInput = document.getElementById('fileElem');
+let fileInput = document.getElementById('dataFile');
 let selectedOrigin = "Velut"; // origin selected for floor
 let selectedChromosome = 0; // displayed chromosome
 let rawData = [];
@@ -52,7 +52,7 @@ function handleFiles(files) {
         data = d3.tsvParse(e.target.result);
         parsing(data);
     };
-    reader.onerror = function (e) {
+    reader.onerror = function () {
         alert("Echec de chargement du fichier");
     }
 }
@@ -523,7 +523,7 @@ function tracerCourbe(idChromosome, data, lineGen, svg, field){
     });
 }
 
-function refreshFloor(floorValueArray,selectedChromosome){
+function refreshFloor(floorValueArray){
     let input;
 
     Object.keys(floorValueArray).forEach(function (origineKey) {
@@ -627,7 +627,7 @@ function floorPositionsSetup(floorPositions, mouseG, WIDTH, field, yHeight){
 *
 */
 
-function refreshfloorPositions(floorPositions, selectedChromosome){
+function refreshfloorPositions(floorPositions){
 
     Object.keys(floorPositions).forEach(function(origineKey) {
 
@@ -671,7 +671,7 @@ function mosaique(floorValue,data,field){
     let chrStr = "chr";
     let originalChrNumber = "";
     let countHaplotype = 0;
-    let groupedBlock = [];
+    let groupedBlock;
     //0(?=.)
 
     for (let i = 0; i < mosaique.length; i++) {
