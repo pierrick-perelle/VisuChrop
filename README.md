@@ -25,9 +25,11 @@ il n'est pas implémenté dans le site il est nécessaire de le l'utiliser en am
 *à condition que les valeurs soient toujours séparées par des tabulations.*
 #### Colonnes : group    name    hex
 
-- **group :** doit être égal à une origine du fichier “données”.
+- **group :** Doit être égal à une origine du fichier “données”.
 
-- **hex :** une couleurs en hexadécimal précédé d’un “#” .
+- **name :** Nom affiché dans la légende du graphique.
+
+- **hex :** Une couleurs en hexadécimal précédé d’un “#” .
 
 ## Chromosomes
 #### Format : .tsv .csv* .tab*
