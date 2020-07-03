@@ -38,7 +38,7 @@ il n'est pas implémenté dans le site il est nécessaire de le l'utiliser en am
 
 
 Il est nécessaire d’avoir une numérotation des chromosomes de 01 à 99 **et** continue **dans ce fichier uniquement**, même si les données ne sont que
-sur certains chromosomes. Voire le fichier d'exemple [less_origin](https://github.com/pierrick-perelle/VisuChrop/exemple_input_file/less_origin.com/).
+sur certains chromosomes. Voire le fichier d'exemple [less_chr](https://github.com/pierrick-perelle/VisuChrop/tree/master/exemple_input_file/less_chr).
 
 - **chr :** “chrx” où x est un nombre entre 01 et 99 (le zéro est nécessaire).
 
