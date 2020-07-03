@@ -45,10 +45,10 @@ export function order(block,haplotype){
 
     //les chromosomes sont obligé de se suivre : chr03 puis chr04...
 
-    // forme :  chr 1 : tout les bloc de l’haplotype 1
+    // forme :  chr 1 : tout les blocs de l’haplotype 1
     //          chr 1 : tout les blocs de l’haplotype 2
-    //          chr 2 : tout les bloc de l’haplotype 1
-    //          chr 2 : tout les bloc de l’haplotype 2
+    //          chr 2 : tout les blocs de l’haplotype 1
+    //          chr 2 : tout les blocs de l’haplotype 2
 
     let tab = [];
     let currentChr = block[0][0][0];
@@ -127,10 +127,7 @@ export function ploidyDescGenerator(haplotype,chrNumber){
         'ABC',
         'ABC',
         'ABC',
-        'ABC',
-        'ABC',
-        'ABC',
-        'ABC',
+        [...]
     ],
     */
 
@@ -141,7 +138,7 @@ export function ploidyDescGenerator(haplotype,chrNumber){
     for (let i = 0; i < chrNumber; i++) {
 
         for (let i = 0; i < haplotype; i++) {
-            chrStr.push(String.fromCharCode('A'.charCodeAt(0) + i))
+            chrStr.push(String.fromCharCode('a'.charCodeAt(0) + i))
         }
         ploidyDesc.push(chrStr.join(""));
         chrStr = [];
@@ -160,12 +157,13 @@ export function ancestorsGenerator(haploytpe){
     ancestors: {
             'A': '#dea673',
             'B': '#7396be',
-            'C': '#7396be'
+            'C': '#7396be',
+            [...]
         },
      */
 
     let ancestors = {};
-    let letter = 'A';
+    let letter = 'a';
 
     for (let i = 0; i < haploytpe; i++) {
         ancestors[letter+""] = "#000000";
@@ -174,6 +172,3 @@ export function ancestorsGenerator(haploytpe){
     return JSON.stringify(ancestors);
 
 }
-
-ploidyDescGenerator(2,11);
-ancestorsGenerator(2);

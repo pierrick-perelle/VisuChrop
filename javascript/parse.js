@@ -9,6 +9,11 @@ export function parsingColor(colorFile){
     return colorMap;
 }
 
+/**
+ * génère in dictionnaire {@colorMap} comme si on avait passé un fichier de couleur en paramètre, mais avec des couleurs aléatoires et des noms complets identiques à ceux dans les données.
+ * @param data : les données parsé. (après être passé dans parsingData())
+ */
+
 
 export function randomColorGenerator(data){
 
@@ -25,6 +30,14 @@ export function randomColorGenerator(data){
 
     return colorMap;
 }
+
+/**
+ * Crée un fichier tsv exploitable par le script ideogram (@convert_band_data.py). actuellement ideogram ne peut pas gérer de chromosome "orphelin", pour un chrx il faut un chr(x-1) à partir de chr01.
+ * La solution actuelle est d'éxiger une numérotation des chromosomes continue en partant de chr01.
+ * La solution qui offre le plus de polyvalence serait de récuperer le numéro du premier chromosome qu'on nous donne dans le fichier de configuration de longueur (chr05 par exemple)
+ * et de crée de fausse ligne dans le fichier de sortie correspondant on chromosome manquant. i.e chr01 02 03 04 avec une longueur par défault. (Ils seront noir car pas de données pour eux).
+ * @param lenFile données parsé (par d3.tsvParse()) issue du fichier reçu.
+ */
 
 export function parsingLen(lenFile){
 
@@ -213,10 +226,10 @@ export function dataStuffing(data,chrConfig){
  * il est préférable de les avoir sous la forme d'un tableau dont chaque case correspond à un graphique.
  * maquette : data[graphique(ch0,chr1,...)][courbe(Velut,Schiz,...)]
  * les données sont trié par chromosome puis par origine
- * @param data un tableau contenant nos données.
+ * @param stuffedData un tableau contenant nos données.
  */
 
-export function parsingData(data){
+export function parsingData(stuffedData){
 
     /*
     mappage (si ça se dit?) des données pour faire en sorte que les origines(A_m..) ne soient plus des colonnes mais des champs dans les lignes de données
@@ -225,10 +238,10 @@ export function parsingData(data){
     pour les mosaïques)
     */
 
-    let dataByOrigin = data.columns.slice(3).map(function (id) {
+    let dataByOrigin = stuffedData.columns.slice(3).map(function (id) {
         return {
             id: id,
-            values: data.map(function (d) {
+            values: stuffedData.map(function (d) {
                 return {chr: d.chr, valeur: parseFloat(d[id]),avr: parseFloat(d.avr)};
             })
         };

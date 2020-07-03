@@ -7,20 +7,20 @@ export function tracerCourbe(idChromosome, data, lineGen, svg, field){
 
     d3.selectAll(".line").remove();
 
-    let container = svg.select("#graphlimit");
+        let container = svg.select("#graphlimit");
 
-    data[idChromosome].values.forEach(function(d) {
-        container.append('path')
-            .attr("class", "line")
-            .attr("ancestor",function(){
-                return d.key;
-            })
-            .attr('d', lineGen(d.values))
-            .style('stroke', function() {
-                return field[d.key][1];
-            })
-            .attr('stroke-width', 2)
-            .attr('fill', 'none');
+        data[idChromosome].values.forEach(function(d) {
+            container.append('path')
+                .attr("class", "line")
+                .attr("ancestor",function(){
+                    return d.key;
+                })
+                .attr('d', lineGen(d.values))
+                .style('stroke', function() {
+                    return field[d.key][1];
+                })
+                .attr('stroke-width', 2)
+                .attr('fill', 'none');
     });
 }
 

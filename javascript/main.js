@@ -515,7 +515,7 @@ function mosaique(floorValue){
                 //Si pour la valeur de l'origine courante le seuil est dépassé, (détéction d'une dose) et qu'il reste un haplotype à alouer alors j'ajoute une ligne dans mon block
                 if (stuffedData[i][origineKey] >= floorValue[origineKey] && countHaplotype < haplotype) {
 
-                    for (let j = 0; j <= haplotype - countHaplotype; j++) {
+                    for (let j = 0; j <= haplotype ; j++) {
                         if(stuffedData[i][origineKey] >= (floorValue[origineKey]*(j+1)) && countHaplotype < haplotype){
                             block.push([originalChrNumber, countHaplotype, parseInt(stuffedData[i]["start"]), parseInt(stuffedData[i]["end"]), ancestorsNameColor[origineKey][1],'\n']);
                             countHaplotype++;
@@ -556,7 +556,8 @@ function mosaique(floorValue){
 
     let groupedBlock = groupByColor(metaBlocks);
 
-    groupedBlock = order(groupedBlock,haplotype);
+    groupedBlock = order(groupedBlock,haplotype); //variable à récuperer pour gemo.
+
 
     metaBlocks = [];
     for (let block of groupedBlock){
@@ -601,6 +602,7 @@ function ideogramConfig(mosaique){
         ancestors:ancestors,
         ploidyDesc:ploidyDesc,
     };
+
 
     new Ideogram(config);
 
