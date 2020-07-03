@@ -1,11 +1,11 @@
-#VisuChrop
+# VisuChrop
 
-#Spécification des fichiers d'entrées
+# Spécification des fichiers d'entrées
 
-##Données 
-######Format : .tsv .csv* .tab*
+## Données 
+###### Format : .tsv .csv* .tab*
 *à conditions que les valeurs soient toujours séparé par des tabulations.*
-######Colonnes : chr    start    end    nom_origine1 nom_origine2    …
+###### Colonnes : chr    start    end    nom_origine1 nom_origine2    …
 
 **chr :** “chrx” où x est un nombre entre 01 et 99 (le zéro est nécessaire).
 
@@ -18,18 +18,18 @@
 Ce fichier est normalement généré par le script python prétraitement.py,
 il n'est pas implémenté dans le site il est nécessaire de le l'utiliser en amont.
 
-##Couleurs
-######Format : .tsv .csv* .tab* .conf*
+## Couleurs
+###### Format : .tsv .csv* .tab* .conf*
 *à conditions que les valeurs soient toujours séparé par des tabulations.*
-######Colonnes : group    name    hex
+###### Colonnes : group    name    hex
 
 **group :** doit être égal à une origine du fichier “données”.
-hex : une couleurs en hexadécimal précédé d’un “#” .
+**hex :** une couleurs en hexadécimal précédé d’un “#” .
 
-##Chromosomes
-######Format : .tsv .csv* .tab*
+## Chromosomes
+###### Format : .tsv .csv* .tab*
 *à condition que les valeurs soient toujours séparées par des tabulations.*
-######Colonnes : chr    len    centromereInf    centromereSup
+###### Colonnes : chr    len    centromereInf    centromereSup
 
 
 Il est nécessaire d’avoir une numérotation des chromosomes de 01 à 99 **et** continue **dans ce fichier uniquement**, même si les données ne sont que
