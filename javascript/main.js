@@ -558,7 +558,6 @@ function mosaique(floorValue){
 
     groupedBlock = order(groupedBlock,haplotype); //variable à récuperer pour gemo.
 
-
     metaBlocks = [];
     for (let block of groupedBlock){
         metaBlocks.push(block.flat(1));
@@ -566,8 +565,10 @@ function mosaique(floorValue){
 
 
     let strMosaique = metaBlocks.join(" ").replace(/,/g,' ');
-    strMosaique = strMosaique.replace(/^ +/gm,"");
+    strMosaique = strMosaique.replace(/^ +/gm,""); //variable à récuperer pour gemo.(sous forme de string) encodeURIComponent....
 
+
+    console.log(strMosaique);
 
     ideogramConfig(strMosaique);
 
@@ -583,10 +584,18 @@ function ideogramConfig(mosaique){
         chr[stuffedData[i]["chr"]] = 1;
     }
     chrNumber = Object.keys(chr).length;
+    if(chrNumber < 11){ //Il faut 11 chromosomes minimum dans la ploidyDesc, surement en rapport avec l'organisme.
+        chrNumber = 11;
+    }
+
+    console.log(chrNumber);
 
     let dataSet = convertStrtoRangeSet(mosaique,haplotype);
     let ploidyDesc = ploidyDescGenerator(haplotype,chrNumber);
     let ancestors = ancestorsGenerator(haplotype);
+
+    console.log(ploidyDesc);
+    console.log(ancestors);
 
     let config = {
         rotatable:false,
