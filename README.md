@@ -4,7 +4,7 @@
 
 ## Données 
 #### Format : .tsv .csv* .tab*
-*à conditions que les valeurs soient toujours séparé par des tabulations.*
+*à condition que les valeurs soient toujours séparées par des tabulations.*
 #### Colonnes : chr    start    end    nom_origine1 nom_origine2    …
 
 
@@ -22,7 +22,7 @@ il n'est pas implémenté dans le site il est nécessaire de le l'utiliser en am
 
 ## Couleurs
 #### Format : .tsv .csv* .tab* .conf*
-*à conditions que les valeurs soient toujours séparé par des tabulations.*
+*à condition que les valeurs soient toujours séparées par des tabulations.*
 #### Colonnes : group    name    hex
 
 - **group :** doit être égal à une origine du fichier “données”.
